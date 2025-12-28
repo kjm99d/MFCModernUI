@@ -160,9 +160,33 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="CMTypes.h" />
+    <ClInclude Include="CMColors.h" />
+    <ClInclude Include="IThemeProvider.h" />
+    <ClInclude Include="CMThemeManager.h" />
+    <ClInclude Include="IAnimatable.h" />
+    <ClInclude Include="CMAnimationManager.h" />
+    <ClInclude Include="CMControlBase.h" />
+    <ClInclude Include="CMButton.h" />
+    <ClInclude Include="CMLabel.h" />
+    <ClInclude Include="CMEdit.h" />
+    <ClInclude Include="CMCheckBox.h" />
+    <ClInclude Include="CMRadioButton.h" />
+    <ClInclude Include="CMPanel.h" />
+    <ClInclude Include="CMProgressBar.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MFCModernUI.cpp" />
+    <ClCompile Include="CMThemeManager.cpp" />
+    <ClCompile Include="CMAnimationManager.cpp" />
+    <ClCompile Include="CMControlBase.cpp" />
+    <ClCompile Include="CMButton.cpp" />
+    <ClCompile Include="CMLabel.cpp" />
+    <ClCompile Include="CMEdit.cpp" />
+    <ClCompile Include="CMCheckBox.cpp" />
+    <ClCompile Include="CMRadioButton.cpp" />
+    <ClCompile Include="CMPanel.cpp" />
+    <ClCompile Include="CMProgressBar.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

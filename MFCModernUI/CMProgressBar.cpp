@@ -172,8 +172,8 @@ namespace MFCModernUI
         // 바 색상
         COLORREF barColor = m_useDefaultBarColor ? colors.primary.normal : m_barColor;
 
-        // 트랙 그리기
-        DrawRoundedRect(pDC, rect, radius, trackColor);
+        // 트랙 그리기 (GDI+ 안티앨리어싱)
+        DrawRoundedRectGdiPlus(pDC, rect, radius, trackColor);
 
         if (m_indeterminate)
         {
@@ -194,7 +194,7 @@ namespace MFCModernUI
                 rect.bottom
             );
 
-            DrawRoundedRect(pDC, barRect, radius, barColor);
+            DrawRoundedRectGdiPlus(pDC, barRect, radius, barColor);
         }
         else
         {
@@ -211,7 +211,7 @@ namespace MFCModernUI
                     rect.bottom
                 );
 
-                DrawRoundedRect(pDC, barRect, radius, barColor);
+                DrawRoundedRectGdiPlus(pDC, barRect, radius, barColor);
             }
 
             // 퍼센트 텍스트

@@ -177,9 +177,9 @@ namespace MFCModernUI
         const ThemeColors& colors = GetColors();
         int radius = TRACK_THICKNESS / 2;
 
-        // 비활성 트랙 (전체)
+        // 비활성 트랙 (전체) - GDI+ 안티앨리어싱
         COLORREF trackColor = m_isEnabled ? colors.surface.hover : colors.surface.disabled;
-        DrawRoundedRect(pDC, trackRect, radius, trackColor);
+        DrawRoundedRectGdiPlus(pDC, trackRect, radius, trackColor);
 
         // 활성 트랙 (채워진 부분)
         if (m_value > m_minValue)
@@ -197,7 +197,7 @@ namespace MFCModernUI
             }
 
             COLORREF fillColor = m_isEnabled ? colors.primary.normal : colors.primary.disabled;
-            DrawRoundedRect(pDC, filledRect, radius, fillColor);
+            DrawRoundedRectGdiPlus(pDC, filledRect, radius, fillColor);
         }
     }
 
@@ -231,31 +231,21 @@ namespace MFCModernUI
             thumbColor = colors.primary.normal;
         }
 
-        // 그림자 효과
+        // GDI+로 그림자 효과 (반투명)
         if (m_isEnabled)
         {
+            Gdiplus::Graphics graphics(pDC->GetSafeHdc());
+            graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+
             CRect shadowRect = drawRect;
             shadowRect.OffsetRect(1, 2);
-
-            COLORREF shadowColor = RGB(0, 0, 0);
-            // 간단한 그림자
-            CBrush shadowBrush(IsLightTheme() ? RGB(200, 200, 200) : RGB(30, 30, 30));
-            CPen shadowPen(PS_SOLID, 1, IsLightTheme() ? RGB(200, 200, 200) : RGB(30, 30, 30));
-            CPen* oldPen = pDC->SelectObject(&shadowPen);
-            CBrush* oldBrush = pDC->SelectObject(&shadowBrush);
-            pDC->Ellipse(shadowRect);
-            pDC->SelectObject(oldPen);
-            pDC->SelectObject(oldBrush);
+            Gdiplus::SolidBrush shadowBrush(Gdiplus::Color(50, 0, 0, 0));
+            graphics.FillEllipse(&shadowBrush,
+                shadowRect.left, shadowRect.top, shadowRect.Width(), shadowRect.Height());
         }
 
-        // 썸 그리기 (원형)
-        CBrush brush(thumbColor);
-        CPen pen(PS_SOLID, 1, thumbColor);
-        CPen* oldPen = pDC->SelectObject(&pen);
-        CBrush* oldBrush = pDC->SelectObject(&brush);
-        pDC->Ellipse(drawRect);
-        pDC->SelectObject(oldPen);
-        pDC->SelectObject(oldBrush);
+        // GDI+로 썸 그리기 (원형)
+        DrawCircleGdiPlus(pDC, drawRect, thumbColor);
     }
 
     void CMSlider::DrawTicks(CDC* pDC, const CRect& trackRect)

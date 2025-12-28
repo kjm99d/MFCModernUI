@@ -197,6 +197,176 @@ namespace MFCModernUI
         pDC->SelectObject(pOldFont);
     }
 
+    // GDI+ 헬퍼 함수들
+    Gdiplus::Color CMControlBase::ToGdiplusColor(COLORREF color, BYTE alpha)
+    {
+        return Gdiplus::Color(alpha, GetRValue(color), GetGValue(color), GetBValue(color));
+    }
+
+    void CMControlBase::CreateRoundedRectPath(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& rect, float radius)
+    {
+        path.Reset();
+
+        if (radius <= 0)
+        {
+            path.AddRectangle(rect);
+            return;
+        }
+
+        float diameter = radius * 2.0f;
+
+        // 왼쪽 상단 모서리
+        path.AddArc(rect.X, rect.Y, diameter, diameter, 180.0f, 90.0f);
+        // 오른쪽 상단 모서리
+        path.AddArc(rect.X + rect.Width - diameter, rect.Y, diameter, diameter, 270.0f, 90.0f);
+        // 오른쪽 하단 모서리
+        path.AddArc(rect.X + rect.Width - diameter, rect.Y + rect.Height - diameter, diameter, diameter, 0.0f, 90.0f);
+        // 왼쪽 하단 모서리
+        path.AddArc(rect.X, rect.Y + rect.Height - diameter, diameter, diameter, 90.0f, 90.0f);
+
+        path.CloseFigure();
+    }
+
+    void CMControlBase::DrawRoundedRectGdiPlus(CDC* pDC, const CRect& rect, int radius,
+        COLORREF fillColor, COLORREF borderColor, int borderWidth)
+    {
+        Gdiplus::Graphics graphics(pDC->GetSafeHdc());
+        graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+        graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);
+
+        Gdiplus::RectF gdipRect(
+            static_cast<Gdiplus::REAL>(rect.left),
+            static_cast<Gdiplus::REAL>(rect.top),
+            static_cast<Gdiplus::REAL>(rect.Width()),
+            static_cast<Gdiplus::REAL>(rect.Height())
+        );
+
+        // 테두리가 있으면 영역 조정
+        if (borderColor != CLR_INVALID && borderWidth > 0)
+        {
+            float halfBorder = borderWidth / 2.0f;
+            gdipRect.X += halfBorder;
+            gdipRect.Y += halfBorder;
+            gdipRect.Width -= borderWidth;
+            gdipRect.Height -= borderWidth;
+        }
+
+        Gdiplus::GraphicsPath path;
+        CreateRoundedRectPath(path, gdipRect, static_cast<float>(radius));
+
+        // 채우기
+        Gdiplus::SolidBrush brush(ToGdiplusColor(fillColor));
+        graphics.FillPath(&brush, &path);
+
+        // 테두리
+        if (borderColor != CLR_INVALID && borderWidth > 0)
+        {
+            Gdiplus::Pen pen(ToGdiplusColor(borderColor), static_cast<Gdiplus::REAL>(borderWidth));
+            graphics.DrawPath(&pen, &path);
+        }
+    }
+
+    void CMControlBase::DrawCircleGdiPlus(CDC* pDC, const CRect& rect, COLORREF fillColor,
+        COLORREF borderColor, int borderWidth)
+    {
+        DrawEllipseGdiPlus(pDC, rect, fillColor, borderColor, borderWidth);
+    }
+
+    void CMControlBase::DrawEllipseGdiPlus(CDC* pDC, const CRect& rect, COLORREF fillColor,
+        COLORREF borderColor, int borderWidth)
+    {
+        Gdiplus::Graphics graphics(pDC->GetSafeHdc());
+        graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+        graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);
+
+        Gdiplus::RectF gdipRect(
+            static_cast<Gdiplus::REAL>(rect.left),
+            static_cast<Gdiplus::REAL>(rect.top),
+            static_cast<Gdiplus::REAL>(rect.Width()),
+            static_cast<Gdiplus::REAL>(rect.Height())
+        );
+
+        // 테두리가 있으면 영역 조정
+        if (borderColor != CLR_INVALID && borderWidth > 0)
+        {
+            float halfBorder = borderWidth / 2.0f;
+            gdipRect.X += halfBorder;
+            gdipRect.Y += halfBorder;
+            gdipRect.Width -= borderWidth;
+            gdipRect.Height -= borderWidth;
+        }
+
+        // 채우기
+        Gdiplus::SolidBrush brush(ToGdiplusColor(fillColor));
+        graphics.FillEllipse(&brush, gdipRect);
+
+        // 테두리
+        if (borderColor != CLR_INVALID && borderWidth > 0)
+        {
+            Gdiplus::Pen pen(ToGdiplusColor(borderColor), static_cast<Gdiplus::REAL>(borderWidth));
+            graphics.DrawEllipse(&pen, gdipRect);
+        }
+    }
+
+    void CMControlBase::DrawLineGdiPlus(CDC* pDC, int x1, int y1, int x2, int y2, COLORREF color, int width)
+    {
+        Gdiplus::Graphics graphics(pDC->GetSafeHdc());
+        graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+
+        Gdiplus::Pen pen(ToGdiplusColor(color), static_cast<Gdiplus::REAL>(width));
+        pen.SetLineCap(Gdiplus::LineCapRound, Gdiplus::LineCapRound, Gdiplus::DashCapRound);
+
+        graphics.DrawLine(&pen,
+            static_cast<Gdiplus::REAL>(x1),
+            static_cast<Gdiplus::REAL>(y1),
+            static_cast<Gdiplus::REAL>(x2),
+            static_cast<Gdiplus::REAL>(y2)
+        );
+    }
+
+    void CMControlBase::DrawTextGdiPlus(CDC* pDC, const CString& text, const CRect& rect,
+        COLORREF color, TextStyle style, UINT format)
+    {
+        Gdiplus::Graphics graphics(pDC->GetSafeHdc());
+        graphics.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
+
+        // 폰트 설정
+        CFont* pFont = GetThemeManager().GetFont(style);
+        LOGFONT lf;
+        pFont->GetLogFont(&lf);
+
+        Gdiplus::Font font(pDC->GetSafeHdc(), &lf);
+
+        // 정렬 설정
+        Gdiplus::StringFormat stringFormat;
+        if (format & DT_CENTER)
+            stringFormat.SetAlignment(Gdiplus::StringAlignmentCenter);
+        else if (format & DT_RIGHT)
+            stringFormat.SetAlignment(Gdiplus::StringAlignmentFar);
+        else
+            stringFormat.SetAlignment(Gdiplus::StringAlignmentNear);
+
+        if (format & DT_VCENTER)
+            stringFormat.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+        else if (format & DT_BOTTOM)
+            stringFormat.SetLineAlignment(Gdiplus::StringAlignmentFar);
+        else
+            stringFormat.SetLineAlignment(Gdiplus::StringAlignmentNear);
+
+        if (format & DT_SINGLELINE)
+            stringFormat.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
+
+        Gdiplus::RectF layoutRect(
+            static_cast<Gdiplus::REAL>(rect.left),
+            static_cast<Gdiplus::REAL>(rect.top),
+            static_cast<Gdiplus::REAL>(rect.Width()),
+            static_cast<Gdiplus::REAL>(rect.Height())
+        );
+
+        Gdiplus::SolidBrush brush(ToGdiplusColor(color));
+        graphics.DrawString(text, -1, &font, layoutRect, &stringFormat, &brush);
+    }
+
     void CMControlBase::OnPaint()
     {
         CPaintDC dc(this);

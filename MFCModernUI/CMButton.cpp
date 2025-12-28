@@ -297,8 +297,8 @@ namespace MFCModernUI
             borderWidth = 2;
         }
 
-        // 배경 그리기
-        DrawRoundedRect(pDC, rect, radius, bgColor, borderColor, borderWidth);
+        // 배경 그리기 (GDI+ 안티앨리어싱)
+        DrawRoundedRectGdiPlus(pDC, rect, radius, bgColor, borderColor, borderWidth);
 
         // 로딩 상태
         if (m_loading)
@@ -340,31 +340,30 @@ namespace MFCModernUI
 
     void CMButton::DrawLoadingSpinner(CDC* pDC, const CRect& rect)
     {
+        Gdiplus::Graphics graphics(pDC->GetSafeHdc());
+        graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+
         int centerX = rect.CenterPoint().x;
         int centerY = rect.CenterPoint().y;
         int radius = min(rect.Width(), rect.Height()) / 4;
 
-        CPen pen(PS_SOLID, 2, GetTextColor());
-        CPen* pOldPen = pDC->SelectObject(&pen);
-        CBrush* pOldBrush = (CBrush*)pDC->SelectStockObject(NULL_BRUSH);
+        // 스피너 펜 (GDI+)
+        COLORREF textColor = GetTextColor();
+        Gdiplus::Pen pen(ToGdiplusColor(textColor), 2.0f);
+        pen.SetLineCap(Gdiplus::LineCapRound, Gdiplus::LineCapRound, Gdiplus::DashCapRound);
 
-        // 스피너 그리기 (부분 원호)
-        double startAngle = m_loadingAngle * PI / 180.0;
-        double endAngle = (m_loadingAngle + 270) * PI / 180.0;
-
-        int x1 = centerX + static_cast<int>(radius * cos(startAngle));
-        int y1 = centerY - static_cast<int>(radius * sin(startAngle));
-        int x2 = centerX + static_cast<int>(radius * cos(endAngle));
-        int y2 = centerY - static_cast<int>(radius * sin(endAngle));
-
-        pDC->Arc(
-            centerX - radius, centerY - radius,
-            centerX + radius, centerY + radius,
-            x1, y1, x2, y2
+        // 스피너 그리기 (부분 원호 - 270도)
+        Gdiplus::RectF arcRect(
+            static_cast<Gdiplus::REAL>(centerX - radius),
+            static_cast<Gdiplus::REAL>(centerY - radius),
+            static_cast<Gdiplus::REAL>(radius * 2),
+            static_cast<Gdiplus::REAL>(radius * 2)
         );
 
-        pDC->SelectObject(pOldPen);
-        pDC->SelectObject(pOldBrush);
+        // GDI+에서 각도는 3시 방향이 0도, 시계방향
+        graphics.DrawArc(&pen, arcRect,
+            static_cast<Gdiplus::REAL>(m_loadingAngle),
+            270.0f);
     }
 
     void CMButton::OnLButtonUp(UINT nFlags, CPoint point)

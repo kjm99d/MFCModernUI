@@ -185,7 +185,8 @@ namespace MFCModernUI
             trackColor = CMAnimationManager::InterpolateColor(offColor, onColor, m_knobPosition);
         }
 
-        DrawRoundedRect(pDC, trackRect, radius, trackColor);
+        // GDI+로 안티앨리어싱된 둥근 사각형 그리기
+        DrawRoundedRectGdiPlus(pDC, trackRect, radius, trackColor);
     }
 
     void CMToggleSwitch::DrawKnob(CDC* pDC, const CRect& trackRect)
@@ -203,26 +204,21 @@ namespace MFCModernUI
         // 노브 색상 - 항상 흰색 계열로 해서 트랙 위에서 잘 보이게
         COLORREF knobColor = m_enabled ? RGB(255, 255, 255) : RGB(200, 200, 200);
 
-        // 노브 그림자 효과 (반투명 회색으로 부드럽게)
+        // GDI+로 안티앨리어싱된 그림자 효과 (반투명)
+        Gdiplus::Graphics graphics(pDC->GetSafeHdc());
+        graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+
+        // 그림자 (반투명 검정)
         CRect shadowRect = knobRect;
         shadowRect.OffsetRect(0, 1);
-        COLORREF shadowColor = RGB(100, 100, 100);  // 진한 회색 그림자
-        DrawRoundedRect(pDC, shadowRect, KNOB_SIZE / 2, shadowColor);
+        Gdiplus::SolidBrush shadowBrush(Gdiplus::Color(40, 0, 0, 0));
+        graphics.FillEllipse(&shadowBrush,
+            shadowRect.left, shadowRect.top, shadowRect.Width(), shadowRect.Height());
 
-        // 노브 그리기
-        DrawRoundedRect(pDC, knobRect, KNOB_SIZE / 2, knobColor);
-
-        // 노브 테두리 (더 명확하게 보이도록)
-        if (!m_enabled)
-        {
-            // disabled 상태에서 테두리 추가
-            CPen pen(PS_SOLID, 1, colors.border.disabled);
-            CPen* oldPen = pDC->SelectObject(&pen);
-            CBrush* oldBrush = (CBrush*)pDC->SelectStockObject(NULL_BRUSH);
-            pDC->Ellipse(knobRect);
-            pDC->SelectObject(oldPen);
-            pDC->SelectObject(oldBrush);
-        }
+        // 노브 (GDI+로 원 그리기)
+        DrawCircleGdiPlus(pDC, knobRect, knobColor,
+            m_enabled ? CLR_INVALID : colors.border.disabled,
+            m_enabled ? 0 : 1);
     }
 
     void CMToggleSwitch::OnLButtonUp(UINT nFlags, CPoint point)

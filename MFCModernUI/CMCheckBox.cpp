@@ -249,9 +249,9 @@ namespace MFCModernUI
             }
         }
 
-        // 배경 그리기
+        // 배경 그리기 (GDI+ 안티앨리어싱)
         int borderWidth = (m_state == ControlState::Focused && !m_checked && !m_indeterminate) ? 2 : 1;
-        DrawRoundedRect(pDC, boxRect, radius, bgColor, borderColor, borderWidth);
+        DrawRoundedRectGdiPlus(pDC, boxRect, radius, bgColor, borderColor, borderWidth);
 
         // 체크마크 또는 불확정 마크 그리기
         if (m_indeterminate)
@@ -269,18 +269,23 @@ namespace MFCModernUI
         if (m_checkProgress <= 0.0f)
             return;
 
+        // GDI+ 안티앨리어싱으로 체크마크 그리기
+        Gdiplus::Graphics graphics(pDC->GetSafeHdc());
+        graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+
         COLORREF markColor = GetColors().textOnPrimary;
-        CPen pen(PS_SOLID, 2, markColor);
-        CPen* pOldPen = pDC->SelectObject(&pen);
+        Gdiplus::Pen pen(ToGdiplusColor(markColor), 2.0f);
+        pen.SetLineCap(Gdiplus::LineCapRound, Gdiplus::LineCapRound, Gdiplus::DashCapRound);
+        pen.SetLineJoin(Gdiplus::LineJoinRound);
 
         int cx = boxRect.CenterPoint().x;
         int cy = boxRect.CenterPoint().y;
 
         // 체크마크 포인트
-        POINT pts[3] = {
-            { cx - 5, cy },
-            { cx - 1, cy + 4 },
-            { cx + 5, cy - 4 }
+        Gdiplus::PointF pts[3] = {
+            Gdiplus::PointF(static_cast<Gdiplus::REAL>(cx - 5), static_cast<Gdiplus::REAL>(cy)),
+            Gdiplus::PointF(static_cast<Gdiplus::REAL>(cx - 1), static_cast<Gdiplus::REAL>(cy + 4)),
+            Gdiplus::PointF(static_cast<Gdiplus::REAL>(cx + 5), static_cast<Gdiplus::REAL>(cy - 4))
         };
 
         // 애니메이션 적용 - 선의 길이를 점진적으로 그리기
@@ -288,44 +293,44 @@ namespace MFCModernUI
         {
             // 첫 번째 선 (왼쪽 아래로)
             float lineProgress = m_checkProgress * 2.0f;
-            int endX = pts[0].x + static_cast<int>((pts[1].x - pts[0].x) * lineProgress);
-            int endY = pts[0].y + static_cast<int>((pts[1].y - pts[0].y) * lineProgress);
+            Gdiplus::REAL endX = pts[0].X + (pts[1].X - pts[0].X) * lineProgress;
+            Gdiplus::REAL endY = pts[0].Y + (pts[1].Y - pts[0].Y) * lineProgress;
 
-            pDC->MoveTo(pts[0].x, pts[0].y);
-            pDC->LineTo(endX, endY);
+            graphics.DrawLine(&pen, pts[0].X, pts[0].Y, endX, endY);
         }
         else
         {
             // 첫 번째 선 완성
-            pDC->MoveTo(pts[0].x, pts[0].y);
-            pDC->LineTo(pts[1].x, pts[1].y);
+            graphics.DrawLine(&pen, pts[0], pts[1]);
 
             // 두 번째 선 (오른쪽 위로)
             float lineProgress = (m_checkProgress - 0.5f) * 2.0f;
-            int endX = pts[1].x + static_cast<int>((pts[2].x - pts[1].x) * lineProgress);
-            int endY = pts[1].y + static_cast<int>((pts[2].y - pts[1].y) * lineProgress);
+            Gdiplus::REAL endX = pts[1].X + (pts[2].X - pts[1].X) * lineProgress;
+            Gdiplus::REAL endY = pts[1].Y + (pts[2].Y - pts[1].Y) * lineProgress;
 
-            pDC->MoveTo(pts[1].x, pts[1].y);
-            pDC->LineTo(endX, endY);
+            graphics.DrawLine(&pen, pts[1].X, pts[1].Y, endX, endY);
         }
-
-        pDC->SelectObject(pOldPen);
     }
 
     void CMCheckBox::DrawIndeterminateMark(CDC* pDC, const CRect& boxRect)
     {
+        // GDI+ 안티앨리어싱으로 불확정 마크 그리기
+        Gdiplus::Graphics graphics(pDC->GetSafeHdc());
+        graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+
         COLORREF markColor = GetColors().textOnPrimary;
-        CPen pen(PS_SOLID, 2, markColor);
-        CPen* pOldPen = pDC->SelectObject(&pen);
+        Gdiplus::Pen pen(ToGdiplusColor(markColor), 2.0f);
+        pen.SetLineCap(Gdiplus::LineCapRound, Gdiplus::LineCapRound, Gdiplus::DashCapRound);
 
         int cx = boxRect.CenterPoint().x;
         int cy = boxRect.CenterPoint().y;
 
         // 가로선
-        pDC->MoveTo(cx - 5, cy);
-        pDC->LineTo(cx + 5, cy);
-
-        pDC->SelectObject(pOldPen);
+        graphics.DrawLine(&pen,
+            static_cast<Gdiplus::REAL>(cx - 5),
+            static_cast<Gdiplus::REAL>(cy),
+            static_cast<Gdiplus::REAL>(cx + 5),
+            static_cast<Gdiplus::REAL>(cy));
     }
 
     void CMCheckBox::OnLButtonUp(UINT nFlags, CPoint point)

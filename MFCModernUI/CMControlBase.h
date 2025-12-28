@@ -4,6 +4,8 @@
 #include "CMColors.h"
 #include "CMThemeManager.h"
 #include "CMAnimationManager.h"
+#include <gdiplus.h>
+#pragma comment(lib, "gdiplus.lib")
 
 // MFC Modern UI - 컨트롤 기본 클래스
 // SOLID: 개방-폐쇄 원칙 - 확장에 열려있고 수정에 닫혀있음
@@ -54,9 +56,20 @@ namespace MFCModernUI
         const ThemeColors& GetColors() const { return CMThemeManager::GetInstance().GetColors(); }
         bool IsLightTheme() const { return !CMThemeManager::GetInstance().IsDarkMode(); }
 
-        // 유틸리티
+        // GDI 유틸리티 (레거시)
         void DrawRoundedRect(CDC* pDC, const CRect& rect, int radius, COLORREF fillColor, COLORREF borderColor = CLR_INVALID, int borderWidth = 0);
         void DrawText(CDC* pDC, const CString& text, const CRect& rect, COLORREF color, TextStyle style = TextStyle::Body, UINT format = DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+        // GDI+ 유틸리티 (안티앨리어싱 지원)
+        void DrawRoundedRectGdiPlus(CDC* pDC, const CRect& rect, int radius, COLORREF fillColor, COLORREF borderColor = CLR_INVALID, int borderWidth = 0);
+        void DrawCircleGdiPlus(CDC* pDC, const CRect& rect, COLORREF fillColor, COLORREF borderColor = CLR_INVALID, int borderWidth = 0);
+        void DrawEllipseGdiPlus(CDC* pDC, const CRect& rect, COLORREF fillColor, COLORREF borderColor = CLR_INVALID, int borderWidth = 0);
+        void DrawLineGdiPlus(CDC* pDC, int x1, int y1, int x2, int y2, COLORREF color, int width = 1);
+        void DrawTextGdiPlus(CDC* pDC, const CString& text, const CRect& rect, COLORREF color, TextStyle style = TextStyle::Body, UINT format = DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+        // GDI+ 헬퍼
+        static Gdiplus::Color ToGdiplusColor(COLORREF color, BYTE alpha = 255);
+        static void CreateRoundedRectPath(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& rect, float radius);
 
         // 크기 헬퍼
         int GetHeight() const;

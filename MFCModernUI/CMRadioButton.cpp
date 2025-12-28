@@ -243,14 +243,8 @@ namespace MFCModernUI
             }
         }
 
-        // 외부 원 그리기
-        CPen borderPen(PS_SOLID, borderWidth, borderColor);
-        CBrush bgBrush(colors.surface.normal);
-
-        CPen* pOldPen = pDC->SelectObject(&borderPen);
-        CBrush* pOldBrush = pDC->SelectObject(&bgBrush);
-
-        pDC->Ellipse(circleRect);
+        // GDI+로 외부 원 그리기 (안티앨리어싱)
+        DrawCircleGdiPlus(pDC, circleRect, colors.surface.normal, borderColor, borderWidth);
 
         // 내부 원 (선택됨)
         if (m_innerCircleScale > 0.0f)
@@ -276,22 +270,15 @@ namespace MFCModernUI
 
             int currentRadius = static_cast<int>(innerRadius * m_innerCircleScale);
 
-            CBrush innerBrush(innerColor);
-            CPen innerPen(PS_NULL, 0, RGB(0, 0, 0));
-
-            pDC->SelectObject(&innerPen);
-            pDC->SelectObject(&innerBrush);
-
-            pDC->Ellipse(
+            // GDI+로 내부 원 그리기
+            CRect innerRect(
                 cx - currentRadius,
                 cy - currentRadius,
                 cx + currentRadius,
                 cy + currentRadius
             );
+            DrawCircleGdiPlus(pDC, innerRect, innerColor);
         }
-
-        pDC->SelectObject(pOldPen);
-        pDC->SelectObject(pOldBrush);
     }
 
     void CMRadioButton::OnLButtonUp(UINT nFlags, CPoint point)

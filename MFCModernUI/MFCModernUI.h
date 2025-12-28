@@ -37,6 +37,18 @@
 #include "CMListView.h"
 #include "CMTabCtrl.h"
 #include "CMSlider.h"
+#include "CMSpinner.h"
+#include "CMTooltip.h"
+#include "CMContextMenu.h"
+
+// Phase 4 컴포넌트 (P2)
+#include "CMTreeView.h"
+#include "CMDataGrid.h"
+#include "CMDatePicker.h"
+#include "CMTimePicker.h"
+#include "CMColorPicker.h"
+#include "CMNotification.h"
+#include "CMModal.h"
 
 // 버전 정보
 #define MFCMODERNUI_VERSION_MAJOR 1

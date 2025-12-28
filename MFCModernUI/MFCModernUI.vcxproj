@@ -179,6 +179,16 @@
     <ClInclude Include="CMListView.h" />
     <ClInclude Include="CMTabCtrl.h" />
     <ClInclude Include="CMSlider.h" />
+    <ClInclude Include="CMSpinner.h" />
+    <ClInclude Include="CMTooltip.h" />
+    <ClInclude Include="CMContextMenu.h" />
+    <ClInclude Include="CMTreeView.h" />
+    <ClInclude Include="CMDataGrid.h" />
+    <ClInclude Include="CMDatePicker.h" />
+    <ClInclude Include="CMTimePicker.h" />
+    <ClInclude Include="CMColorPicker.h" />
+    <ClInclude Include="CMNotification.h" />
+    <ClInclude Include="CMModal.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MFCModernUI.cpp" />
@@ -197,6 +207,16 @@
     <ClCompile Include="CMListView.cpp" />
     <ClCompile Include="CMTabCtrl.cpp" />
     <ClCompile Include="CMSlider.cpp" />
+    <ClCompile Include="CMSpinner.cpp" />
+    <ClCompile Include="CMTooltip.cpp" />
+    <ClCompile Include="CMContextMenu.cpp" />
+    <ClCompile Include="CMTreeView.cpp" />
+    <ClCompile Include="CMDataGrid.cpp" />
+    <ClCompile Include="CMDatePicker.cpp" />
+    <ClCompile Include="CMTimePicker.cpp" />
+    <ClCompile Include="CMColorPicker.cpp" />
+    <ClCompile Include="CMNotification.cpp" />
+    <ClCompile Include="CMModal.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

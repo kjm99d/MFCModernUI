@@ -349,7 +349,7 @@ void CDemoMainFrame::CreateDateTimeDemo()
     const int controlWidth = 200;
 
     // 타이틀
-    m_dateTimeDemoTitle.Create(_T("Date, Time & Color Pickers"), WS_CHILD, CRect(PADDING, y, 400, y + 30), &m_contentPanel, 7000);
+    m_dateTimeDemoTitle.Create(_T("Date, Time && Color Pickers"), WS_CHILD, CRect(PADDING, y, 400, y + 30), &m_contentPanel, 7000);
     m_dateTimeDemoTitle.SetTextStyle(TextStyle::H4);
     y += 50;
 

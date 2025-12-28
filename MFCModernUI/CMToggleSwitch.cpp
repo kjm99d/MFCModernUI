@@ -127,8 +127,8 @@ namespace MFCModernUI
 
         const ThemeColors& colors = GetColors();
 
-        // 배경
-        pDC->FillSolidRect(rect, colors.background.normal);
+        // 배경 - 부모 패널과 동일하게 surface.normal 사용
+        pDC->FillSolidRect(rect, colors.surface.normal);
 
         // 트랙 위치 계산
         CRect trackRect;
@@ -169,14 +169,15 @@ namespace MFCModernUI
         }
         else
         {
+            // Off 상태는 회색 배경으로 명확하게 표시
             switch (m_state)
             {
             case ControlState::Hover:
-                offColor = colors.surface.hover;
+                offColor = colors.border.hover;  // 호버시 약간 더 진한 회색
                 onColor = colors.primary.hover;
                 break;
             default:
-                offColor = colors.surface.hover;
+                offColor = colors.border.normal;  // 기본 회색 배경 (테두리 색상 사용)
                 onColor = colors.primary.normal;
                 break;
             }
@@ -199,16 +200,29 @@ namespace MFCModernUI
 
         CRect knobRect(knobX, knobY, knobX + KNOB_SIZE, knobY + KNOB_SIZE);
 
-        // 노브 색상
-        COLORREF knobColor = m_enabled ? colors.background.normal : colors.surface.disabled;
+        // 노브 색상 - 항상 흰색 계열로 해서 트랙 위에서 잘 보이게
+        COLORREF knobColor = m_enabled ? RGB(255, 255, 255) : RGB(200, 200, 200);
 
-        // 노브 그림자 효과 (간단한 버전)
+        // 노브 그림자 효과 (반투명 회색으로 부드럽게)
         CRect shadowRect = knobRect;
         shadowRect.OffsetRect(0, 1);
-        DrawRoundedRect(pDC, shadowRect, KNOB_SIZE / 2, RGB(0, 0, 0));
+        COLORREF shadowColor = RGB(100, 100, 100);  // 진한 회색 그림자
+        DrawRoundedRect(pDC, shadowRect, KNOB_SIZE / 2, shadowColor);
 
         // 노브 그리기
         DrawRoundedRect(pDC, knobRect, KNOB_SIZE / 2, knobColor);
+
+        // 노브 테두리 (더 명확하게 보이도록)
+        if (!m_enabled)
+        {
+            // disabled 상태에서 테두리 추가
+            CPen pen(PS_SOLID, 1, colors.border.disabled);
+            CPen* oldPen = pDC->SelectObject(&pen);
+            CBrush* oldBrush = (CBrush*)pDC->SelectStockObject(NULL_BRUSH);
+            pDC->Ellipse(knobRect);
+            pDC->SelectObject(oldPen);
+            pDC->SelectObject(oldBrush);
+        }
     }
 
     void CMToggleSwitch::OnLButtonUp(UINT nFlags, CPoint point)

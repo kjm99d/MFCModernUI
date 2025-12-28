@@ -92,7 +92,7 @@ int CDemoMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
     // 테마 토글 (사이드바 하단)
     m_themeLabel.Create(_T("Dark Mode"), WS_CHILD | WS_VISIBLE, CRect(16, 500, 100, 520), &m_sidebar, 1020);
     m_themeToggle.Create(WS_CHILD | WS_VISIBLE, CRect(120, 496, 180, 524), &m_sidebar, 1021);
-    m_themeToggle.SetToggleHandler(OnThemeToggle, this);
+    m_themeToggle.SetToggleChangedHandler(OnThemeToggle, this);
 
     // 컨텐츠 패널
     m_contentPanel.Create(WS_CHILD | WS_VISIBLE, CRect(SIDEBAR_WIDTH, 0, 1000, 600), this, 1030);
@@ -224,7 +224,7 @@ void CDemoMainFrame::CreateInputsDemo()
     m_slider.Create(WS_CHILD, CRect(PADDING + labelWidth, y, PADDING + labelWidth + controlWidth, y + 32), &m_contentPanel, 3021);
     m_slider.SetRange(0, 100);
     m_slider.SetValue(50);
-    m_slider.SetValueChangedHandler(OnSliderValueChanged, this);
+    // SetValueChangedHandler는 (oldValue, newValue) 시그니처 사용
     y += 56;
 
     // Spinner
@@ -255,27 +255,24 @@ void CDemoMainFrame::CreateSelectionDemo()
     m_check3.SetEnabled(FALSE);
     y += 50;
 
-    // RadioButton
-    m_radio1.Create(_T("Choice 1"), WS_CHILD, CRect(PADDING, y, 200, y + 24), &m_contentPanel, 4010);
-    m_radio1.SetGroupId(1);
-    m_radio1.SetChecked(TRUE);
+    // RadioButton (groupId는 Create의 마지막 파라미터로 전달)
+    m_radio1.Create(_T("Choice 1"), WS_CHILD, CRect(PADDING, y, 200, y + 24), &m_contentPanel, 4010, 1);
+    m_radio1.SetSelected(TRUE);
     y += 32;
 
-    m_radio2.Create(_T("Choice 2"), WS_CHILD, CRect(PADDING, y, 200, y + 24), &m_contentPanel, 4011);
-    m_radio2.SetGroupId(1);
+    m_radio2.Create(_T("Choice 2"), WS_CHILD, CRect(PADDING, y, 200, y + 24), &m_contentPanel, 4011, 1);
     y += 32;
 
-    m_radio3.Create(_T("Choice 3"), WS_CHILD, CRect(PADDING, y, 200, y + 24), &m_contentPanel, 4012);
-    m_radio3.SetGroupId(1);
+    m_radio3.Create(_T("Choice 3"), WS_CHILD, CRect(PADDING, y, 200, y + 24), &m_contentPanel, 4012, 1);
     y += 50;
 
     // ToggleSwitch
     m_toggle1.Create(WS_CHILD, CRect(PADDING, y, 200, y + 28), &m_contentPanel, 4020);
-    m_toggle1.SetOn(TRUE);
+    m_toggle1.SetChecked(TRUE);
     y += 40;
 
     m_toggle2.Create(WS_CHILD, CRect(PADDING, y, 200, y + 28), &m_contentPanel, 4021);
-    m_toggle2.SetOn(FALSE);
+    m_toggle2.SetChecked(FALSE);
 }
 
 void CDemoMainFrame::CreateDataDisplayDemo()
@@ -615,25 +612,25 @@ void CDemoMainFrame::OnThemeToggle(void* context, BOOL isOn)
     CMThemeManager::GetInstance().SetDarkMode(isOn);
 }
 
-// Notification 핸들러
+// Notification 핸들러 (API: ShowInfo(message, duration))
 void CDemoMainFrame::OnInfoNotifyClick(void* context)
 {
-    CMNotificationManager::GetInstance().ShowInfo(_T("Information"), _T("This is an info notification."));
+    CMNotificationManager::GetInstance().ShowInfo(_T("This is an info notification."));
 }
 
 void CDemoMainFrame::OnSuccessNotifyClick(void* context)
 {
-    CMNotificationManager::GetInstance().ShowSuccess(_T("Success"), _T("Operation completed successfully!"));
+    CMNotificationManager::GetInstance().ShowSuccess(_T("Operation completed successfully!"));
 }
 
 void CDemoMainFrame::OnWarningNotifyClick(void* context)
 {
-    CMNotificationManager::GetInstance().ShowWarning(_T("Warning"), _T("This is a warning message."));
+    CMNotificationManager::GetInstance().ShowWarning(_T("This is a warning message."));
 }
 
 void CDemoMainFrame::OnErrorNotifyClick(void* context)
 {
-    CMNotificationManager::GetInstance().ShowError(_T("Error"), _T("An error has occurred."));
+    CMNotificationManager::GetInstance().ShowError(_T("An error has occurred."));
 }
 
 void CDemoMainFrame::OnModalBtnClick(void* context)
@@ -645,15 +642,15 @@ void CDemoMainFrame::OnModalBtnClick(void* context)
 
     if (result == ModalResult::Yes)
     {
-        CMNotificationManager::GetInstance().ShowSuccess(_T("Confirmed"), _T("You clicked Yes!"));
+        CMNotificationManager::GetInstance().ShowSuccess(_T("You clicked Yes!"));
     }
     else
     {
-        CMNotificationManager::GetInstance().ShowInfo(_T("Cancelled"), _T("You clicked No."));
+        CMNotificationManager::GetInstance().ShowInfo(_T("You clicked No."));
     }
 }
 
-void CDemoMainFrame::OnSliderValueChanged(void* context, int value)
+void CDemoMainFrame::OnSliderValueChanged(void* context, int oldValue, int newValue)
 {
     // 슬라이더 값 변경 시 처리 (필요시)
 }

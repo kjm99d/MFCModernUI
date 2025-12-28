@@ -140,7 +140,7 @@ protected:
     static void OnWarningNotifyClick(void* context);
     static void OnErrorNotifyClick(void* context);
     static void OnModalBtnClick(void* context);
-    static void OnSliderValueChanged(void* context, int value);
+    static void OnSliderValueChanged(void* context, int oldValue, int newValue);
 
     afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
     afx_msg void OnSize(UINT nType, int cx, int cy);

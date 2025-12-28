@@ -19,7 +19,7 @@ namespace MFCModernUI
     {
     }
 
-    BOOL CMModalOverlay::Create(CWnd* pParentWnd)
+    BOOL CMModalOverlay::CreateOverlay(CWnd* pParentWnd)
     {
         CString className = AfxRegisterWndClass(
             CS_HREDRAW | CS_VREDRAW,
@@ -314,31 +314,31 @@ namespace MFCModernUI
         {
         case ModalButtons::OK:
         {
-            ButtonInfo btn = { nullptr, _T("확인"), ModalResult::OK, TRUE, FALSE };
+            ButtonInfo btn = { nullptr, _T("OK"), ModalResult::OK, TRUE, FALSE };
             m_buttons.Add(btn);
             break;
         }
         case ModalButtons::OKCancel:
         {
-            ButtonInfo btn1 = { nullptr, _T("확인"), ModalResult::OK, TRUE, FALSE };
-            ButtonInfo btn2 = { nullptr, _T("취소"), ModalResult::Cancel, FALSE, TRUE };
+            ButtonInfo btn1 = { nullptr, _T("OK"), ModalResult::OK, TRUE, FALSE };
+            ButtonInfo btn2 = { nullptr, _T("Cancel"), ModalResult::Cancel, FALSE, TRUE };
             m_buttons.Add(btn1);
             m_buttons.Add(btn2);
             break;
         }
         case ModalButtons::YesNo:
         {
-            ButtonInfo btn1 = { nullptr, _T("예"), ModalResult::Yes, TRUE, FALSE };
-            ButtonInfo btn2 = { nullptr, _T("아니오"), ModalResult::No, FALSE, TRUE };
+            ButtonInfo btn1 = { nullptr, _T("Yes"), ModalResult::Yes, TRUE, FALSE };
+            ButtonInfo btn2 = { nullptr, _T("No"), ModalResult::No, FALSE, TRUE };
             m_buttons.Add(btn1);
             m_buttons.Add(btn2);
             break;
         }
         case ModalButtons::YesNoCancel:
         {
-            ButtonInfo btn1 = { nullptr, _T("예"), ModalResult::Yes, TRUE, FALSE };
-            ButtonInfo btn2 = { nullptr, _T("아니오"), ModalResult::No, FALSE, FALSE };
-            ButtonInfo btn3 = { nullptr, _T("취소"), ModalResult::Cancel, FALSE, TRUE };
+            ButtonInfo btn1 = { nullptr, _T("Yes"), ModalResult::Yes, TRUE, FALSE };
+            ButtonInfo btn2 = { nullptr, _T("No"), ModalResult::No, FALSE, FALSE };
+            ButtonInfo btn3 = { nullptr, _T("Cancel"), ModalResult::Cancel, FALSE, TRUE };
             m_buttons.Add(btn1);
             m_buttons.Add(btn2);
             m_buttons.Add(btn3);
@@ -355,16 +355,15 @@ namespace MFCModernUI
             CMButton* pButton = new CMButton();
 
             CRect btnRect(0, 0, BUTTON_WIDTH, BUTTON_HEIGHT);
-            pButton->Create(WS_CHILD | WS_VISIBLE | WS_TABSTOP, btnRect, this, 1000 + (UINT)i);
-            pButton->SetText(m_buttons[i].text);
+            pButton->Create(m_buttons[i].text, WS_CHILD | WS_VISIBLE | WS_TABSTOP, btnRect, this, 1000 + (UINT)i);
 
             if (m_buttons[i].isDefault)
             {
-                pButton->SetStyle(ButtonStyle::Primary);
+                pButton->SetButtonStyle(ButtonStyle::Primary);
             }
             else
             {
-                pButton->SetStyle(ButtonStyle::Outline);
+                pButton->SetButtonStyle(ButtonStyle::Outline);
             }
 
             m_buttons[i].pButton = pButton;
@@ -499,7 +498,8 @@ namespace MFCModernUI
                 CFont* oldFont = pDC->SelectObject(pFont);
                 pDC->SetBkMode(TRANSPARENT);
                 pDC->SetTextColor(color);
-                pDC->DrawText(_T("?"), rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                CRect textRect = rect;
+                pDC->DrawText(_T("?"), &textRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
                 pDC->SelectObject(oldFont);
             }
             break;
@@ -604,12 +604,11 @@ namespace MFCModernUI
     void CMModal::ShowOverlay(CWnd* pParent)
     {
         m_pOverlay = new CMModalOverlay();
-        if (m_pOverlay->Create(pParent))
+        if (m_pOverlay->CreateOverlay(pParent))
         {
             // 알파 블렌딩 적용
-            SetLayeredWindowAttributes(*m_pOverlay, 0, 128, LWA_ALPHA);
             m_pOverlay->ModifyStyleEx(0, WS_EX_LAYERED);
-            m_pOverlay->SetLayeredWindowAttributes(0, 128, LWA_ALPHA);
+            ::SetLayeredWindowAttributes(m_pOverlay->GetSafeHwnd(), 0, 128, LWA_ALPHA);
             m_pOverlay->ShowWindow(SW_SHOW);
         }
     }

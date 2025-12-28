@@ -63,6 +63,7 @@ namespace MFCModernUI
         H5,
         H6,
         Body,
+        BodyBold,
         BodySmall,
         Caption
     };

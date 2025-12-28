@@ -45,6 +45,9 @@ namespace MFCModernUI
     // 모달 결과 핸들러
     typedef void (*ModalResultHandler)(void* context, ModalResult result);
 
+    // 전방 선언
+    class CMModalOverlay;
+
     class CMModal : public CWnd
     {
         DECLARE_DYNAMIC(CMModal)
@@ -121,7 +124,7 @@ namespace MFCModernUI
         CArray<ButtonInfo> m_buttons;
 
         // 오버레이 (배경 어둡게)
-        CWnd* m_pOverlay;
+        CMModalOverlay* m_pOverlay;
 
         // 이벤트
         ModalResultHandler m_resultHandler;
@@ -157,7 +160,7 @@ namespace MFCModernUI
         CMModalOverlay();
         virtual ~CMModalOverlay();
 
-        BOOL Create(CWnd* pParentWnd);
+        BOOL CreateOverlay(CWnd* pParentWnd);
 
     protected:
         afx_msg void OnPaint();

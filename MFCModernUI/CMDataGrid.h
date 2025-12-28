@@ -73,6 +73,25 @@ namespace MFCModernUI
         BOOL selected;
 
         CMGridRow() : data(0), selected(FALSE) {}
+
+        // CArray 포함으로 인한 복사 생성자/대입 연산자 명시적 정의
+        CMGridRow(const CMGridRow& other)
+            : data(other.data)
+            , selected(other.selected)
+        {
+            cells.Copy(other.cells);
+        }
+
+        CMGridRow& operator=(const CMGridRow& other)
+        {
+            if (this != &other)
+            {
+                data = other.data;
+                selected = other.selected;
+                cells.Copy(other.cells);
+            }
+            return *this;
+        }
     };
 
     // 이벤트 핸들러

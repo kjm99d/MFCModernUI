@@ -11,3 +11,6 @@
 
 #include <afx.h>
 #include <afxwin.h>         // MFC 핵심 및 표준 구성 요소입니다.
+#include <afxcmn.h>         // MFC의 공용 컨트롤 (CToolTipCtrl 등)
+#include <afxdlgs.h>        // MFC 표준 대화 상자 (CColorDialog 등)
+#include <ATLComTime.h>     // COleDateTime

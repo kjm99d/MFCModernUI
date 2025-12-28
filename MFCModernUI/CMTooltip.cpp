@@ -302,7 +302,7 @@ namespace MFCModernUI
 
     BOOL CMTooltip::IsLightTheme() const
     {
-        return CMThemeManager::GetInstance().GetTheme() == ThemeType::Light;
+        return !CMThemeManager::GetInstance().IsDarkMode();
     }
 
     const ThemeColors& CMTooltip::GetColors() const

@@ -23,6 +23,10 @@ namespace MFCModernUI
         , m_tabStop(TRUE)
         , m_state(ControlState::Normal)
         , m_controlSize(ControlSize::Medium)
+        , m_isEnabled(TRUE)
+        , m_isHovered(FALSE)
+        , m_isFocused(FALSE)
+        , m_isPressed(FALSE)
         , m_mouseTracking(FALSE)
         , m_mouseOver(FALSE)
         , m_currentAnimationId(0)
@@ -51,6 +55,7 @@ namespace MFCModernUI
         if (m_enabled != enabled)
         {
             m_enabled = enabled;
+            m_isEnabled = enabled;
             SetState(enabled ? ControlState::Normal : ControlState::Disabled);
             EnableWindow(enabled);
             Invalidate();
@@ -99,6 +104,13 @@ namespace MFCModernUI
         {
             ControlState oldState = m_state;
             m_state = newState;
+
+            // 상태 플래그 동기화
+            m_isEnabled = (newState != ControlState::Disabled);
+            m_isHovered = (newState == ControlState::Hover);
+            m_isFocused = (newState == ControlState::Focused);
+            m_isPressed = (newState == ControlState::Pressed);
+
             Invalidate();
         }
     }

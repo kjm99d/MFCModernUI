@@ -72,6 +72,7 @@ namespace MFCModernUI
         afx_msg void OnSetFocus(CWnd* pOldWnd);
         afx_msg void OnKillFocus(CWnd* pNewWnd);
         afx_msg LRESULT OnEditChange(WPARAM wParam, LPARAM lParam);
+        afx_msg void OnInnerEditChange();
         afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 
         DECLARE_MESSAGE_MAP()

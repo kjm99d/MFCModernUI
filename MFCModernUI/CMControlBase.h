@@ -52,6 +52,7 @@ namespace MFCModernUI
         // 테마 관련
         CMThemeManager& GetThemeManager() { return CMThemeManager::GetInstance(); }
         const ThemeColors& GetColors() const { return CMThemeManager::GetInstance().GetColors(); }
+        bool IsLightTheme() const { return !CMThemeManager::GetInstance().IsDarkMode(); }
 
         // 유틸리티
         void DrawRoundedRect(CDC* pDC, const CRect& rect, int radius, COLORREF fillColor, COLORREF borderColor = CLR_INVALID, int borderWidth = 0);
@@ -86,6 +87,12 @@ namespace MFCModernUI
         // 상태
         ControlState m_state;
         ControlSize m_controlSize;
+
+        // 상태 플래그 (파생 클래스에서 직접 접근)
+        BOOL m_isEnabled;       // 활성화 상태
+        BOOL m_isHovered;       // 마우스 오버 상태
+        BOOL m_isFocused;       // 포커스 상태
+        BOOL m_isPressed;       // 눌림 상태
 
         // 마우스 추적
         BOOL m_mouseTracking;

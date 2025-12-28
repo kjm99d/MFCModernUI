@@ -369,7 +369,11 @@ namespace MFCModernUI
         if (pt.x + rect.Width() > screenRect.right)
             pt.x = screenRect.right - rect.Width();
         if (pt.y + rect.Height() > screenRect.bottom)
-            pt.y -= rect.Height() + m_pOwner->GetClientRect(&rect) + rect.Height();
+        {
+            CRect ownerRect;
+            m_pOwner->GetClientRect(&ownerRect);
+            pt.y -= rect.Height() + ownerRect.Height();
+        }
 
         SetWindowPos(&wndTopMost, pt.x, pt.y, 0, 0,
             SWP_NOSIZE | SWP_SHOWWINDOW);
@@ -498,7 +502,7 @@ namespace MFCModernUI
 
         // 월/년 표시
         CString monthYear;
-        monthYear.Format(_T("%d년 %d월"), m_viewDate.GetYear(), m_viewDate.GetMonth());
+        monthYear.Format(_T("%d/%d"), m_viewDate.GetYear(), m_viewDate.GetMonth());
 
         CRect textRect = rect;
         textRect.left = prevRect.right;
@@ -516,7 +520,7 @@ namespace MFCModernUI
     {
         const ThemeColors& colors = GetColors();
 
-        LPCTSTR weekDays[] = { _T("일"), _T("월"), _T("화"), _T("수"), _T("목"), _T("금"), _T("토") };
+        LPCTSTR weekDays[] = { _T("Sun"), _T("Mon"), _T("Tue"), _T("Wed"), _T("Thu"), _T("Fri"), _T("Sat") };
 
         CFont* pFont = CMThemeManager::GetInstance().GetFont(TextStyle::Caption);
         CFont* oldFont = pDC->SelectObject(pFont);
@@ -681,7 +685,7 @@ namespace MFCModernUI
         CFont* oldFont = pDC->SelectObject(pFont);
         pDC->SetBkMode(TRANSPARENT);
         pDC->SetTextColor(colors.primary.normal);
-        pDC->DrawText(_T("오늘"), buttonRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+        pDC->DrawText(_T("Today"), buttonRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
         pDC->SelectObject(oldFont);
     }
 

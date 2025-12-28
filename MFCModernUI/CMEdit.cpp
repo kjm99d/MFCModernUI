@@ -14,7 +14,7 @@ namespace MFCModernUI
         ON_WM_KILLFOCUS()
         ON_WM_LBUTTONDOWN()
         ON_MESSAGE(WM_EDIT_CHANGE, OnEditChange)
-        ON_EN_CHANGE(IDC_INNER_EDIT, OnEditChange)
+        ON_CONTROL(EN_CHANGE, IDC_INNER_EDIT, OnInnerEditChange)
     END_MESSAGE_MAP()
 
     CMEdit::CMEdit()
@@ -365,11 +365,11 @@ namespace MFCModernUI
         {
         case ValidationState::Valid:
             iconColor = colors.success.normal;
-            iconText = _T("✓");
+            iconText = _T("\x2713");  // 체크 마크
             break;
         case ValidationState::Invalid:
             iconColor = colors.danger.normal;
-            iconText = _T("✗");
+            iconText = _T("\x2717");  // X 마크
             break;
         case ValidationState::Warning:
             iconColor = colors.warning.normal;
@@ -433,6 +433,12 @@ namespace MFCModernUI
         }
 
         return 0;
+    }
+
+    void CMEdit::OnInnerEditChange()
+    {
+        // EN_CHANGE 메시지를 WM_EDIT_CHANGE로 전달
+        OnEditChange(0, 0);
     }
 
     void CMEdit::OnLButtonDown(UINT nFlags, CPoint point)

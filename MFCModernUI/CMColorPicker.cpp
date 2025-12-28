@@ -366,7 +366,11 @@ namespace MFCModernUI
         if (pt.x + rect.Width() > screenRect.right)
             pt.x = screenRect.right - rect.Width();
         if (pt.y + rect.Height() > screenRect.bottom)
-            pt.y -= rect.Height() + m_pOwner->GetClientRect(&rect) + rect.Height();
+        {
+            CRect ownerRect;
+            m_pOwner->GetClientRect(&ownerRect);
+            pt.y -= rect.Height() + ownerRect.Height();
+        }
 
         SetWindowPos(&wndTopMost, pt.x, pt.y, 0, 0,
             SWP_NOSIZE | SWP_SHOWWINDOW);
@@ -581,7 +585,8 @@ namespace MFCModernUI
         CFont* oldFont = pDC->SelectObject(pFont);
         pDC->SetBkMode(TRANSPARENT);
         pDC->SetTextColor(colors.primary.normal);
-        pDC->DrawText(_T("더 많은 색상..."), rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+        CRect textRect = rect;
+        pDC->DrawText(_T("More colors..."), &textRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
         pDC->SelectObject(oldFont);
     }
 

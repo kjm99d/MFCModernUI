@@ -521,7 +521,7 @@ namespace MFCModernUI
                 CFont* pOldFont = dc.SelectObject(pFont);
                 dc.SetTextColor(colors.primary.normal);
                 dc.SetBkMode(TRANSPARENT);
-                dc.DrawText(_T("✓"), checkRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                dc.DrawText(_T("\x2713"), checkRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
                 dc.SelectObject(pOldFont);
             }
 

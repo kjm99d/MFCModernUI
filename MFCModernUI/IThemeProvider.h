@@ -1,5 +1,6 @@
 #pragma once
 
+#include "CMTypes.h"
 #include "CMColors.h"
 
 // MFC Modern UI - 테마 제공자 인터페이스

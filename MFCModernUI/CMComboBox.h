@@ -24,9 +24,12 @@ namespace MFCModernUI
     // 선택 변경 이벤트 핸들러
     typedef void (*ComboSelectionChangedHandler)(void* context, int oldIndex, int newIndex);
 
+    class CMComboDropdown;  // 전방 선언
+
     class CMComboBox : public CMControlBase
     {
         DECLARE_DYNAMIC(CMComboBox)
+        friend class CMComboDropdown;  // friend 선언
 
     public:
         CMComboBox();

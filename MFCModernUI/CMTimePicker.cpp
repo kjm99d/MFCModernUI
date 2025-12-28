@@ -362,7 +362,11 @@ namespace MFCModernUI
         if (pt.x + rect.Width() > screenRect.right)
             pt.x = screenRect.right - rect.Width();
         if (pt.y + rect.Height() > screenRect.bottom)
-            pt.y -= rect.Height() + m_pOwner->GetClientRect(&rect) + rect.Height();
+        {
+            CRect ownerRect;
+            m_pOwner->GetClientRect(&ownerRect);
+            pt.y -= rect.Height() + ownerRect.Height();
+        }
 
         SetWindowPos(&wndTopMost, pt.x, pt.y, 0, 0,
             SWP_NOSIZE | SWP_SHOWWINDOW);

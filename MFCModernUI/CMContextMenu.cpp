@@ -619,7 +619,7 @@ namespace MFCModernUI
 
     BOOL CMContextMenu::IsLightTheme() const
     {
-        return CMThemeManager::GetInstance().GetTheme() == ThemeType::Light;
+        return !CMThemeManager::GetInstance().IsDarkMode();
     }
 
     const ThemeColors& CMContextMenu::GetColors() const

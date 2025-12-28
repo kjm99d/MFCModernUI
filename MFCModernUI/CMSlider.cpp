@@ -135,7 +135,7 @@ namespace MFCModernUI
         const ThemeColors& colors = GetColors();
 
         // 배경
-        pDC->FillSolidRect(rect, colors.background);
+        pDC->FillSolidRect(rect, colors.background.normal);
 
         // 트랙 그리기
         CRect trackRect = GetTrackRect();

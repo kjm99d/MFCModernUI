@@ -50,6 +50,7 @@ namespace MFCModernUI
             { TextStyle::H5, 16, FW_SEMIBOLD },
             { TextStyle::H6, 14, FW_SEMIBOLD },
             { TextStyle::Body, 14, FW_NORMAL },
+            { TextStyle::BodyBold, 14, FW_BOLD },
             { TextStyle::BodySmall, 12, FW_NORMAL },
             { TextStyle::Caption, 10, FW_NORMAL }
         };

@@ -31,6 +31,13 @@
 #include "CMPanel.h"
 #include "CMProgressBar.h"
 
+// Phase 3 컴포넌트 (P1)
+#include "CMToggleSwitch.h"
+#include "CMComboBox.h"
+#include "CMListView.h"
+#include "CMTabCtrl.h"
+#include "CMSlider.h"
+
 // 버전 정보
 #define MFCMODERNUI_VERSION_MAJOR 1
 #define MFCMODERNUI_VERSION_MINOR 0

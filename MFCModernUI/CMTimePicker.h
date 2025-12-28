@@ -107,6 +107,7 @@ namespace MFCModernUI
         afx_msg void OnMouseMove(UINT nFlags, CPoint point);
         afx_msg void OnKillFocus(CWnd* pNewWnd);
         afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
+        afx_msg void OnClose();
 
         DECLARE_MESSAGE_MAP()
 

@@ -288,8 +288,17 @@ namespace MFCModernUI
 
     void CMTimePicker::OnKillFocus(CWnd* pNewWnd)
     {
+        // 팝업으로 포커스가 이동한 경우는 포커스 상태 유지
         if (m_popup && pNewWnd == m_popup)
+        {
             return;
+        }
+
+        // 팝업이 열려있고 포커스가 다른 곳으로 이동한 경우
+        if (m_popup && m_popup->IsWindowVisible())
+        {
+            HideDropDown();
+        }
 
         CMControlBase::OnKillFocus(pNewWnd);
     }
@@ -302,6 +311,7 @@ namespace MFCModernUI
         ON_WM_MOUSEMOVE()
         ON_WM_KILLFOCUS()
         ON_WM_MOUSEWHEEL()
+        ON_WM_CLOSE()
     END_MESSAGE_MAP()
 
     CMTimePopup::CMTimePopup(CMTimePicker* pOwner)
@@ -336,8 +346,9 @@ namespace MFCModernUI
         int width = columns * COLUMN_WIDTH + 16;
         int height = BUTTON_HEIGHT + ROW_HEIGHT + BUTTON_HEIGHT + 16;
 
+        // WS_EX_NOACTIVATE: 팝업이 활성화되어도 포커스를 가져가지 않음
         return CWnd::CreateEx(
-            WS_EX_TOOLWINDOW | WS_EX_TOPMOST,
+            WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE,
             className,
             nullptr,
             WS_POPUP,
@@ -352,6 +363,8 @@ namespace MFCModernUI
         m_tempHour = m_pOwner->GetHour();
         m_tempMinute = m_pOwner->GetMinute();
         m_tempSecond = m_pOwner->GetSecond();
+        m_hoverColumn = -1;
+        m_hoverRow = -1;
 
         CRect rect;
         GetWindowRect(&rect);
@@ -368,13 +381,20 @@ namespace MFCModernUI
             pt.y -= rect.Height() + ownerRect.Height();
         }
 
+        // SWP_NOACTIVATE 플래그를 사용하여 포커스 변경 방지
         SetWindowPos(&wndTopMost, pt.x, pt.y, 0, 0,
-            SWP_NOSIZE | SWP_SHOWWINDOW);
-        SetFocus();
+            SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE);
+
+        // 마우스 캡처로 외부 클릭 감지
+        SetCapture();
     }
 
     void CMTimePopup::Hide()
     {
+        if (GetCapture() == this)
+        {
+            ReleaseCapture();
+        }
         ShowWindow(SW_HIDE);
         m_pOwner->Invalidate();
     }
@@ -554,6 +574,16 @@ namespace MFCModernUI
 
     void CMTimePopup::OnLButtonDown(UINT nFlags, CPoint point)
     {
+        CRect rect;
+        GetClientRect(&rect);
+
+        // 팝업 영역 외부 클릭 시 닫기
+        if (!rect.PtInRect(point))
+        {
+            Hide();
+            return;
+        }
+
         int col = HitTestColumn(point);
         int row = HitTestRow(point);
 
@@ -588,11 +618,14 @@ namespace MFCModernUI
 
     void CMTimePopup::OnKillFocus(CWnd* pNewWnd)
     {
-        if (pNewWnd != m_pOwner)
-        {
-            Hide();
-        }
+        // WS_EX_NOACTIVATE 사용으로 이 핸들러는 거의 호출되지 않음
+        // 마우스 캡처로 외부 클릭을 감지함
         CWnd::OnKillFocus(pNewWnd);
+    }
+
+    void CMTimePopup::OnClose()
+    {
+        Hide();
     }
 
     BOOL CMTimePopup::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)

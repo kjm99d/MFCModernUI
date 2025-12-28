@@ -29,6 +29,7 @@ namespace MFCModernUI
     BEGIN_MESSAGE_MAP(CMColorPicker, CMControlBase)
         ON_WM_LBUTTONDOWN()
         ON_WM_KEYDOWN()
+        ON_WM_KILLFOCUS()
     END_MESSAGE_MAP()
 
     CMColorPicker::CMColorPicker()
@@ -295,6 +296,23 @@ namespace MFCModernUI
         CMControlBase::OnKeyDown(nChar, nRepCnt, nFlags);
     }
 
+    void CMColorPicker::OnKillFocus(CWnd* pNewWnd)
+    {
+        // 팝업으로 포커스가 이동한 경우는 포커스 상태 유지
+        if (m_popup && pNewWnd == m_popup)
+        {
+            return;
+        }
+
+        // 팝업이 열려있고 포커스가 다른 곳으로 이동한 경우
+        if (m_popup && m_popup->IsWindowVisible())
+        {
+            HideDropDown();
+        }
+
+        CMControlBase::OnKillFocus(pNewWnd);
+    }
+
     // CMColorPopup 구현
     BEGIN_MESSAGE_MAP(CMColorPopup, CWnd)
         ON_WM_PAINT()
@@ -302,6 +320,7 @@ namespace MFCModernUI
         ON_WM_LBUTTONDOWN()
         ON_WM_MOUSEMOVE()
         ON_WM_KILLFOCUS()
+        ON_WM_CLOSE()
     END_MESSAGE_MAP()
 
     CMColorPopup::CMColorPopup(CMColorPicker* pOwner)
@@ -341,8 +360,9 @@ namespace MFCModernUI
         // 미리보기 및 더보기 버튼
         height += 32 + PADDING;
 
+        // WS_EX_NOACTIVATE: 팝업이 활성화되어도 포커스를 가져가지 않음
         return CWnd::CreateEx(
-            WS_EX_TOOLWINDOW | WS_EX_TOPMOST,
+            WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE,
             className,
             nullptr,
             WS_POPUP,
@@ -356,6 +376,9 @@ namespace MFCModernUI
     {
         m_tempColor = m_pOwner->GetColor();
         RGBToHSV(m_tempColor, m_hue, m_saturation, m_value);
+        m_hoverPaletteIndex = -1;
+        m_hoverCustomIndex = -1;
+        m_hoverMoreButton = FALSE;
 
         CRect rect;
         GetWindowRect(&rect);
@@ -372,13 +395,20 @@ namespace MFCModernUI
             pt.y -= rect.Height() + ownerRect.Height();
         }
 
+        // SWP_NOACTIVATE 플래그를 사용하여 포커스 변경 방지
         SetWindowPos(&wndTopMost, pt.x, pt.y, 0, 0,
-            SWP_NOSIZE | SWP_SHOWWINDOW);
-        SetFocus();
+            SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE);
+
+        // 마우스 캡처로 외부 클릭 감지
+        SetCapture();
     }
 
     void CMColorPopup::Hide()
     {
+        if (GetCapture() == this)
+        {
+            ReleaseCapture();
+        }
         ShowWindow(SW_HIDE);
         m_pOwner->Invalidate();
     }
@@ -667,6 +697,16 @@ namespace MFCModernUI
 
     void CMColorPopup::OnLButtonDown(UINT nFlags, CPoint point)
     {
+        CRect rect;
+        GetClientRect(&rect);
+
+        // 팝업 영역 외부 클릭 시 닫기
+        if (!rect.PtInRect(point))
+        {
+            Hide();
+            return;
+        }
+
         // 팔레트 클릭
         int paletteIndex = HitTestPalette(point);
         if (paletteIndex >= 0)
@@ -743,11 +783,14 @@ namespace MFCModernUI
 
     void CMColorPopup::OnKillFocus(CWnd* pNewWnd)
     {
-        if (pNewWnd != m_pOwner)
-        {
-            Hide();
-        }
+        // WS_EX_NOACTIVATE 사용으로 이 핸들러는 거의 호출되지 않음
+        // 마우스 캡처로 외부 클릭을 감지함
         CWnd::OnKillFocus(pNewWnd);
+    }
+
+    void CMColorPopup::OnClose()
+    {
+        Hide();
     }
 
     void CMColorPopup::RGBToHSV(COLORREF color, float& h, float& s, float& v)

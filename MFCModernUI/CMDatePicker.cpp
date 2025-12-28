@@ -300,9 +300,19 @@ namespace MFCModernUI
 
     void CMDatePicker::OnKillFocus(CWnd* pNewWnd)
     {
-        // 팝업으로 포커스가 이동한 경우는 닫지 않음
+        // 팝업으로 포커스가 이동한 경우는 포커스 상태 유지
         if (m_popup && pNewWnd == m_popup)
+        {
+            // 포커스 상태는 유지하되 base class 호출 안함
             return;
+        }
+
+        // 팝업이 열려있고 포커스가 다른 곳으로 이동한 경우
+        if (m_popup && m_popup->IsWindowVisible())
+        {
+            // 팝업을 닫고 나서 base class 호출
+            HideDropDown();
+        }
 
         CMControlBase::OnKillFocus(pNewWnd);
     }
@@ -315,6 +325,7 @@ namespace MFCModernUI
         ON_WM_MOUSEMOVE()
         ON_WM_KILLFOCUS()
         ON_WM_KEYDOWN()
+        ON_WM_CLOSE()
     END_MESSAGE_MAP()
 
     CMCalendarPopup::CMCalendarPopup(CMDatePicker* pOwner)
@@ -344,8 +355,9 @@ namespace MFCModernUI
         if (m_pOwner->GetShowTodayButton())
             height += FOOTER_HEIGHT;
 
+        // WS_EX_NOACTIVATE: 팝업이 활성화되어도 포커스를 가져가지 않음
         return CWnd::CreateEx(
-            WS_EX_TOOLWINDOW | WS_EX_TOPMOST,
+            WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE,
             className,
             nullptr,
             WS_POPUP,
@@ -358,6 +370,8 @@ namespace MFCModernUI
     void CMCalendarPopup::Show(CPoint pt)
     {
         m_viewDate = m_pOwner->GetDate();
+        m_hoverDay = -1;
+        m_hoverMonth = 0;
 
         CRect rect;
         GetWindowRect(&rect);
@@ -375,13 +389,20 @@ namespace MFCModernUI
             pt.y -= rect.Height() + ownerRect.Height();
         }
 
+        // SWP_NOACTIVATE 플래그를 사용하여 포커스 변경 방지
         SetWindowPos(&wndTopMost, pt.x, pt.y, 0, 0,
-            SWP_NOSIZE | SWP_SHOWWINDOW);
-        SetFocus();
+            SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE);
+
+        // 마우스 캡처로 외부 클릭 감지
+        SetCapture();
     }
 
     void CMCalendarPopup::Hide()
     {
+        if (GetCapture() == this)
+        {
+            ReleaseCapture();
+        }
         ShowWindow(SW_HIDE);
         m_pOwner->Invalidate();
     }
@@ -693,6 +714,13 @@ namespace MFCModernUI
     {
         CRect rect;
         GetClientRect(&rect);
+
+        // 팝업 영역 외부 클릭 시 닫기
+        if (!rect.PtInRect(point))
+        {
+            Hide();
+            return;
+        }
         rect.DeflateRect(8, 4, 8, 0);
 
         // 헤더 영역
@@ -798,11 +826,14 @@ namespace MFCModernUI
 
     void CMCalendarPopup::OnKillFocus(CWnd* pNewWnd)
     {
-        if (pNewWnd != m_pOwner)
-        {
-            Hide();
-        }
+        // WS_EX_NOACTIVATE 사용으로 이 핸들러는 거의 호출되지 않음
+        // 마우스 캡처로 외부 클릭을 감지함
         CWnd::OnKillFocus(pNewWnd);
+    }
+
+    void CMCalendarPopup::OnClose()
+    {
+        Hide();
     }
 
     void CMCalendarPopup::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)

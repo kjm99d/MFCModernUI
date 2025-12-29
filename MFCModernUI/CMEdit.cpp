@@ -10,11 +10,18 @@ namespace MFCModernUI
 
     BEGIN_MESSAGE_MAP(CMEdit, CMControlBase)
         ON_WM_SIZE()
+        ON_WM_SHOWWINDOW()
         ON_WM_SETFOCUS()
         ON_WM_KILLFOCUS()
+        ON_WM_MOUSEMOVE()
+        ON_WM_MOUSELEAVE()
         ON_WM_LBUTTONDOWN()
+        ON_WM_CTLCOLOR()
+        ON_WM_TIMER()
         ON_MESSAGE(WM_EDIT_CHANGE, OnEditChange)
         ON_CONTROL(EN_CHANGE, IDC_INNER_EDIT, OnInnerEditChange)
+        ON_CONTROL(EN_SETFOCUS, IDC_INNER_EDIT, OnInnerEditSetFocus)
+        ON_CONTROL(EN_KILLFOCUS, IDC_INNER_EDIT, OnInnerEditKillFocus)
     END_MESSAGE_MAP()
 
     CMEdit::CMEdit()
@@ -32,6 +39,9 @@ namespace MFCModernUI
         m_themeClass = _T("edit");
         m_currentBorderColor = GetColors().border.normal;
         m_targetBorderColor = m_currentBorderColor;
+
+        // 배경 브러시 초기화
+        m_editBgBrush.CreateSolidBrush(GetColors().surface.normal);
     }
 
     CMEdit::~CMEdit()
@@ -296,9 +306,32 @@ namespace MFCModernUI
     {
         // Direct2D 렌더링 시작
         if (!BeginD2DDraw())
-        {
-            OnDrawGdiPlus(pDC);
             return;
+
+        // 실제 포커스 상태와 m_state 동기화 (항상 체크)
+        BOOL innerFocused = IsInnerEditFocused();
+        COLORREF expectedBorderColor;
+
+        if (innerFocused)
+        {
+            m_state = ControlState::Focused;
+            m_isFocused = TRUE;
+            expectedBorderColor = GetColors().borderFocus;
+        }
+        else
+        {
+            if (m_state == ControlState::Focused)
+            {
+                m_state = ControlState::Normal;
+                m_isFocused = FALSE;
+            }
+            expectedBorderColor = GetBorderColor();
+        }
+
+        // 테두리 색상이 다르면 즉시 업데이트
+        if (m_currentBorderColor != expectedBorderColor)
+        {
+            m_currentBorderColor = expectedBorderColor;
         }
 
         CRect rect;
@@ -310,8 +343,8 @@ namespace MFCModernUI
         // 배경
         COLORREF bgColor = m_enabled ? colors.surface.normal : colors.surface.disabled;
 
-        // 테두리 두께
-        int borderWidth = (m_state == ControlState::Focused) ? 2 : 1;
+        // 테두리 두께 (항상 동일한 영역 사용을 위해 1px로 고정, 포커스 시 색상으로만 구분)
+        int borderWidth = 1;
 
         // 배경 및 테두리 그리기
         DrawRoundedRectD2D(rect, radius, bgColor, m_currentBorderColor, borderWidth);
@@ -330,102 +363,70 @@ namespace MFCModernUI
         EndD2DDraw();
     }
 
-    void CMEdit::OnDrawGdiPlus(CDC* pDC)
-    {
-        CRect rect;
-        GetClientRect(&rect);
-
-        const ThemeColors& colors = GetColors();
-        int radius = GetThemeManager().GetCornerRadius();
-
-        COLORREF bgColor = m_enabled ? colors.surface.normal : colors.surface.disabled;
-        int borderWidth = (m_state == ControlState::Focused) ? 2 : 1;
-
-        DrawRoundedRect(pDC, rect, radius, bgColor, m_currentBorderColor, borderWidth);
-
-        if (IsClearButtonVisible())
-        {
-            DrawClearButton(pDC);
-        }
-        else if (m_validationState != ValidationState::None)
-        {
-            DrawValidationIcon(pDC, rect);
-        }
-    }
-
-    void CMEdit::DrawClearButton(CDC* pDC)
-    {
-        CRect rect;
-        GetClientRect(&rect);
-
-        // 버튼 위치 계산
-        m_clearButtonRect.SetRect(
-            rect.right - 28,
-            rect.top + (rect.Height() - 20) / 2,
-            rect.right - 8,
-            rect.top + (rect.Height() + 20) / 2
-        );
-
-        // X 아이콘 그리기
-        COLORREF iconColor = m_clearButtonHover
-            ? GetColors().text
-            : GetColors().textSecondary;
-
-        CPen pen(PS_SOLID, 2, iconColor);
-        CPen* pOldPen = pDC->SelectObject(&pen);
-
-        int cx = m_clearButtonRect.CenterPoint().x;
-        int cy = m_clearButtonRect.CenterPoint().y;
-        int size = 5;
-
-        pDC->MoveTo(cx - size, cy - size);
-        pDC->LineTo(cx + size, cy + size);
-        pDC->MoveTo(cx + size, cy - size);
-        pDC->LineTo(cx - size, cy + size);
-
-        pDC->SelectObject(pOldPen);
-    }
-
-    void CMEdit::DrawValidationIcon(CDC* pDC, const CRect& rect)
-    {
-        const ThemeColors& colors = GetColors();
-        COLORREF iconColor;
-
-        CString iconText;
-
-        switch (m_validationState)
-        {
-        case ValidationState::Valid:
-            iconColor = colors.success.normal;
-            iconText = _T("\x2713");  // 체크 마크
-            break;
-        case ValidationState::Invalid:
-            iconColor = colors.danger.normal;
-            iconText = _T("\x2717");  // X 마크
-            break;
-        case ValidationState::Warning:
-            iconColor = colors.warning.normal;
-            iconText = _T("!");
-            break;
-        default:
-            return;
-        }
-
-        CRect iconRect(
-            rect.right - 28,
-            rect.top,
-            rect.right - 4,
-            rect.bottom
-        );
-
-        DrawText(pDC, iconText, iconRect, iconColor, TextStyle::Body,
-            DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-    }
-
     void CMEdit::OnSize(UINT nType, int cx, int cy)
     {
         CMControlBase::OnSize(nType, cx, cy);
         UpdateInnerEditPosition();
+    }
+
+    void CMEdit::OnShowWindow(BOOL bShow, UINT nStatus)
+    {
+        CMControlBase::OnShowWindow(bShow, nStatus);
+
+        if (bShow)
+        {
+            // 컨트롤이 다시 보일 때 약간의 지연 후 포커스 상태 동기화
+            // (ShowWindow 직후에는 포커스가 아직 설정되지 않았을 수 있음)
+            SetTimer(1001, 50, nullptr);
+        }
+        else
+        {
+            // 숨겨질 때 상태 리셋
+            KillTimer(1001);
+            m_state = ControlState::Normal;
+            m_isFocused = FALSE;
+            m_isHovered = FALSE;
+            m_currentBorderColor = GetColors().border.normal;
+        }
+    }
+
+    void CMEdit::OnTimer(UINT_PTR nIDEvent)
+    {
+        if (nIDEvent == 1001)
+        {
+            KillTimer(1001);
+            SyncFocusState();
+        }
+        CMControlBase::OnTimer(nIDEvent);
+    }
+
+    void CMEdit::SyncFocusState()
+    {
+        BOOL innerFocused = IsInnerEditFocused();
+
+        ControlState newState;
+        if (innerFocused)
+        {
+            newState = ControlState::Focused;
+        }
+        else
+        {
+            // 마우스 위치 확인
+            POINT pt;
+            GetCursorPos(&pt);
+            ScreenToClient(&pt);
+
+            CRect rect;
+            GetClientRect(&rect);
+
+            newState = rect.PtInRect(pt) ? ControlState::Hover : ControlState::Normal;
+        }
+
+        m_state = newState;
+        m_isFocused = (newState == ControlState::Focused);
+        m_isHovered = (newState == ControlState::Hover);
+        m_currentBorderColor = GetBorderColor();
+        Invalidate();
     }
 
     void CMEdit::OnSetFocus(CWnd* pOldWnd)
@@ -450,6 +451,64 @@ namespace MFCModernUI
         CMControlBase::OnKillFocus(pNewWnd);
     }
 
+    BOOL CMEdit::IsInnerEditFocused() const
+    {
+        if (!m_innerEdit.m_hWnd)
+            return FALSE;
+
+        HWND hFocused = ::GetFocus();
+        return (hFocused == m_innerEdit.m_hWnd);
+    }
+
+    void CMEdit::OnMouseMove(UINT nFlags, CPoint point)
+    {
+        // 내부 에디트에 포커스가 있으면 Focused 상태 유지
+        if (IsInnerEditFocused())
+        {
+            // 마우스 트래킹만 설정하고 상태는 변경하지 않음
+            if (!m_mouseTracking)
+            {
+                TRACKMOUSEEVENT tme;
+                tme.cbSize = sizeof(TRACKMOUSEEVENT);
+                tme.dwFlags = TME_LEAVE;
+                tme.hwndTrack = m_hWnd;
+                TrackMouseEvent(&tme);
+                m_mouseTracking = TRUE;
+            }
+            CWnd::OnMouseMove(nFlags, point);
+            return;
+        }
+
+        CMControlBase::OnMouseMove(nFlags, point);
+    }
+
+    void CMEdit::OnMouseLeave()
+    {
+        m_mouseTracking = FALSE;
+
+        // 마우스가 내부 에디트로 이동한 경우는 상태 변경하지 않음
+        POINT pt;
+        GetCursorPos(&pt);
+        ScreenToClient(&pt);
+
+        CRect rect;
+        GetClientRect(&rect);
+
+        if (rect.PtInRect(pt))
+        {
+            // 아직 CMEdit 영역 내에 있음 (내부 에디트 위)
+            return;
+        }
+
+        // 내부 에디트에 포커스가 있으면 Focused 상태 유지
+        if (IsInnerEditFocused())
+        {
+            return;
+        }
+
+        CMControlBase::OnMouseLeave();
+    }
+
     LRESULT CMEdit::OnEditChange(WPARAM wParam, LPARAM lParam)
     {
         if (m_textChangedHandler)
@@ -471,6 +530,39 @@ namespace MFCModernUI
     {
         // EN_CHANGE 메시지를 WM_EDIT_CHANGE로 전달
         OnEditChange(0, 0);
+    }
+
+    void CMEdit::OnInnerEditSetFocus()
+    {
+        // 내부 에디트가 포커스를 받으면 CMEdit도 Focused 상태로 변경
+        m_state = ControlState::Focused;
+        m_isFocused = TRUE;
+        StartBorderAnimation(GetBorderColor());
+    }
+
+    void CMEdit::OnInnerEditKillFocus()
+    {
+        // 내부 에디트가 포커스를 잃으면 CMEdit도 Normal 상태로 변경
+        // (마우스가 올라가 있으면 Hover)
+        POINT pt;
+        GetCursorPos(&pt);
+        ScreenToClient(&pt);
+
+        CRect rect;
+        GetClientRect(&rect);
+
+        m_isFocused = FALSE;
+        if (rect.PtInRect(pt))
+        {
+            m_state = ControlState::Hover;
+            m_isHovered = TRUE;
+        }
+        else
+        {
+            m_state = ControlState::Normal;
+            m_isHovered = FALSE;
+        }
+        StartBorderAnimation(GetBorderColor());
     }
 
     void CMEdit::OnLButtonDown(UINT nFlags, CPoint point)
@@ -570,5 +662,47 @@ namespace MFCModernUI
 
         DrawTextD2D(iconText, iconRect, iconColor, TextStyle::Body,
             DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    }
+
+    HBRUSH CMEdit::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+    {
+        if (pWnd == &m_innerEdit)
+        {
+            const ThemeColors& colors = GetColors();
+            COLORREF bgColor = m_enabled ? colors.surface.normal : colors.surface.disabled;
+            COLORREF textColor = m_enabled ? colors.text : colors.textDisabled;
+
+            pDC->SetBkColor(bgColor);
+            pDC->SetTextColor(textColor);
+
+            return (HBRUSH)m_editBgBrush.GetSafeHandle();
+        }
+
+        return CWnd::OnCtlColor(pDC, pWnd, nCtlColor);
+    }
+
+    void CMEdit::HandleThemeChanged()
+    {
+        UpdateInnerEditColors();
+        CMControlBase::HandleThemeChanged();
+    }
+
+    void CMEdit::UpdateInnerEditColors()
+    {
+        const ThemeColors& colors = GetColors();
+        COLORREF bgColor = m_enabled ? colors.surface.normal : colors.surface.disabled;
+
+        // 브러시 재생성
+        if (m_editBgBrush.GetSafeHandle())
+        {
+            m_editBgBrush.DeleteObject();
+        }
+        m_editBgBrush.CreateSolidBrush(bgColor);
+
+        // 내부 에디트 다시 그리기
+        if (m_innerEdit.m_hWnd)
+        {
+            m_innerEdit.Invalidate();
+        }
     }
 }

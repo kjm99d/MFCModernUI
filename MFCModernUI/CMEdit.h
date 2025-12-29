@@ -59,21 +59,30 @@ namespace MFCModernUI
     protected:
         virtual void OnDraw(CDC* pDC) override;
         virtual void SetState(ControlState newState) override;
+        virtual void HandleThemeChanged() override;
 
         // 내부 에디트 컨트롤 생성
         void CreateInnerEdit();
         void UpdateInnerEditPosition();
+        void UpdateInnerEditColors();
 
         // 테두리 색상 결정
         COLORREF GetBorderColor() const;
 
         // 메시지 핸들러
         afx_msg void OnSize(UINT nType, int cx, int cy);
+        afx_msg void OnShowWindow(BOOL bShow, UINT nStatus);
         afx_msg void OnSetFocus(CWnd* pOldWnd);
         afx_msg void OnKillFocus(CWnd* pNewWnd);
+        afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+        afx_msg void OnMouseLeave();
         afx_msg LRESULT OnEditChange(WPARAM wParam, LPARAM lParam);
         afx_msg void OnInnerEditChange();
+        afx_msg void OnInnerEditSetFocus();
+        afx_msg void OnInnerEditKillFocus();
         afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+        afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
+        afx_msg void OnTimer(UINT_PTR nIDEvent);
 
         DECLARE_MESSAGE_MAP()
 
@@ -102,14 +111,18 @@ namespace MFCModernUI
         CRect m_clearButtonRect;
         BOOL m_clearButtonHover;
 
+        // 내부 에디트 색상용 브러시
+        CBrush m_editBgBrush;
+
         // 헬퍼
         void StartBorderAnimation(COLORREF targetColor);
         BOOL IsClearButtonVisible() const;
+        BOOL IsInnerEditFocused() const;
+        void SyncFocusState();
         void DrawClearButton(CDC* pDC);
         void DrawValidationIcon(CDC* pDC, const CRect& rect);
 
         // Direct2D
-        void OnDrawGdiPlus(CDC* pDC);
         void DrawClearButtonD2D();
         void DrawValidationIconD2D(const CRect& rect);
     };

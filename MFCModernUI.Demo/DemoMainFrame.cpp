@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "DemoMainFrame.h"
+#include "CMNotification.h"
 
 IMPLEMENT_DYNAMIC(CDemoMainFrame, CFrameWnd)
 
@@ -541,7 +542,7 @@ void CDemoMainFrame::HideAllDemoControls()
 
 void CDemoMainFrame::UpdateSidebarButtons(DemoPage page)
 {
-    // 모든 버튼을 Ghost로
+    // 모든 버튼 스타일 업데이트
     m_btnButtons.SetButtonStyle(page == DemoPage::Buttons ? ButtonStyle::Primary : ButtonStyle::Ghost);
     m_btnInputs.SetButtonStyle(page == DemoPage::Inputs ? ButtonStyle::Primary : ButtonStyle::Ghost);
     m_btnSelection.SetButtonStyle(page == DemoPage::Selection ? ButtonStyle::Primary : ButtonStyle::Ghost);
@@ -549,6 +550,9 @@ void CDemoMainFrame::UpdateSidebarButtons(DemoPage page)
     m_btnFeedback.SetButtonStyle(page == DemoPage::Feedback ? ButtonStyle::Primary : ButtonStyle::Ghost);
     m_btnDateTime.SetButtonStyle(page == DemoPage::DateTime ? ButtonStyle::Primary : ButtonStyle::Ghost);
     m_btnTheme.SetButtonStyle(page == DemoPage::Theme ? ButtonStyle::Primary : ButtonStyle::Ghost);
+
+    // 사이드바 즉시 갱신
+    m_sidebar.RedrawWindow(nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
 }
 
 void CDemoMainFrame::LayoutControls()
@@ -664,16 +668,12 @@ void CDemoMainFrame::OnSize(UINT nType, int cx, int cy)
 void CDemoMainFrame::OnPaint()
 {
     CPaintDC dc(this);
+    // 자식 컨트롤(CMPanel)이 전체 영역을 덮으므로 별도 그리기 불필요
 }
 
-BOOL CDemoMainFrame::OnEraseBkgnd(CDC* pDC)
+BOOL CDemoMainFrame::OnEraseBkgnd(CDC* /*pDC*/)
 {
-    CRect rect;
-    GetClientRect(&rect);
-
-    const ThemeColors& colors = CMThemeManager::GetInstance().GetColors();
-    pDC->FillSolidRect(rect, colors.background.normal);
-
+    // 자식 컨트롤이 전체 영역을 덮으므로 배경 그리기 생략 (깜빡임 방지)
     return TRUE;
 }
 

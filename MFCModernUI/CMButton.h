@@ -51,6 +51,7 @@ namespace MFCModernUI
         // CMControlBase 오버라이드
         virtual void OnDraw(CDC* pDC) override;
         virtual void SetState(ControlState newState) override;
+        virtual void HandleThemeChanged() override;
 
         // 색상 가져오기
         const ColorToken& GetStyleColors() const;
@@ -87,9 +88,7 @@ namespace MFCModernUI
 
         // 헬퍼
         void UpdateColors();
-        void DrawLoadingSpinner(CDC* pDC, const CRect& rect);
         void DrawLoadingSpinnerD2D(const CRect& rect);
         void StartColorAnimation(COLORREF targetColor);
-        void OnDrawGdiPlus(CDC* pDC);  // GDI+ 폴백
     };
 }

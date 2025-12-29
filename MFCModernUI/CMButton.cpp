@@ -71,9 +71,17 @@ namespace MFCModernUI
     {
         if (m_buttonStyle != style)
         {
+            // 진행 중인 애니메이션 중지
+            if (m_currentAnimationId > 0)
+            {
+                CMAnimationManager::GetInstance().StopAnimation(m_currentAnimationId);
+                m_currentAnimationId = 0;
+            }
+
             m_buttonStyle = style;
             UpdateColors();
             Invalidate();
+            UpdateWindow();  // 즉시 다시 그리기
         }
     }
 
@@ -232,6 +240,12 @@ namespace MFCModernUI
         }
     }
 
+    void CMButton::HandleThemeChanged()
+    {
+        UpdateColors();
+        CMControlBase::HandleThemeChanged();
+    }
+
     void CMButton::StartColorAnimation(COLORREF targetColor)
     {
         if (m_currentAnimationId > 0)
@@ -261,11 +275,7 @@ namespace MFCModernUI
     {
         // Direct2D 렌더링 시작
         if (!BeginD2DDraw())
-        {
-            // D2D 실패 시 GDI+ 폴백
-            OnDrawGdiPlus(pDC);
             return;
-        }
 
         CRect rect;
         GetClientRect(&rect);
@@ -341,86 +351,6 @@ namespace MFCModernUI
         }
 
         EndD2DDraw();
-    }
-
-    void CMButton::OnDrawGdiPlus(CDC* pDC)
-    {
-        CRect rect;
-        GetClientRect(&rect);
-
-        int radius = (m_cornerRadius >= 0) ? m_cornerRadius : GetThemeManager().GetCornerRadius();
-
-        if (m_scale < 1.0f)
-        {
-            int dx = static_cast<int>(rect.Width() * (1.0f - m_scale) / 2);
-            int dy = static_cast<int>(rect.Height() * (1.0f - m_scale) / 2);
-            rect.DeflateRect(dx, dy);
-        }
-
-        COLORREF bgColor = m_currentBgColor;
-        COLORREF borderColor = CLR_INVALID;
-        int borderWidth = 0;
-
-        if (m_buttonStyle == ButtonStyle::Outline)
-        {
-            borderColor = GetStyleColors().normal;
-            borderWidth = 1;
-            if (m_state == ControlState::Focused)
-            {
-                borderColor = GetColors().borderFocus;
-                borderWidth = 2;
-            }
-        }
-        else if (m_state == ControlState::Focused)
-        {
-            borderColor = GetColors().borderFocus;
-            borderWidth = 2;
-        }
-
-        DrawRoundedRectGdiPlus(pDC, rect, radius, bgColor, borderColor, borderWidth);
-
-        if (m_loading)
-        {
-            DrawLoadingSpinner(pDC, rect);
-            return;
-        }
-
-        COLORREF textColor = GetTextColor();
-        if (!m_iconOnly && !m_text.IsEmpty())
-        {
-            CRect textRect = rect;
-            textRect.DeflateRect(GetPadding(), 0);
-            DrawText(pDC, m_text, textRect, textColor, TextStyle::Body,
-                DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-        }
-    }
-
-    void CMButton::DrawLoadingSpinner(CDC* pDC, const CRect& rect)
-    {
-        Gdiplus::Graphics graphics(pDC->GetSafeHdc());
-        graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-
-        int centerX = rect.CenterPoint().x;
-        int centerY = rect.CenterPoint().y;
-        int radius = min(rect.Width(), rect.Height()) / 4;
-
-        // 스피너 펜 (GDI+)
-        COLORREF textColor = GetTextColor();
-        Gdiplus::Pen pen(ToGdiplusColor(textColor), 2.0f);
-        pen.SetLineCap(Gdiplus::LineCapRound, Gdiplus::LineCapRound, Gdiplus::DashCapRound);
-
-        // 스피너 그리기 (부분 원호 - 270도)
-        Gdiplus::RectF arcRect(
-            static_cast<Gdiplus::REAL>(centerX - radius),
-            static_cast<Gdiplus::REAL>(centerY - radius),
-            static_cast<Gdiplus::REAL>(radius * 2),
-            static_cast<Gdiplus::REAL>(radius * 2)
-        );
-
-        // GDI+에서 각도는 3시 방향이 0도, 시계방향
-        graphics.DrawArc(&pen, arcRect,
-            static_cast<Gdiplus::REAL>(m_loadingAngle),
-            270.0f);
     }
 
     void CMButton::DrawLoadingSpinnerD2D(const CRect& rect)

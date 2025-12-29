@@ -111,6 +111,59 @@ namespace MFCModernUI
 
     void CMSpinner::OnDraw(CDC* pDC)
     {
+        // Direct2D 렌더링 시작
+        if (!BeginD2DDraw())
+        {
+            OnDrawGdiPlus(pDC);
+            return;
+        }
+
+        CRect rect;
+        GetClientRect(&rect);
+
+        const ThemeColors& colors = GetColors();
+
+        // 배경색
+        COLORREF bgColor = m_isEnabled ? colors.surface.normal : colors.surface.disabled;
+
+        // 테두리색
+        COLORREF borderColor;
+        if (!m_isEnabled)
+        {
+            borderColor = colors.border.disabled;
+        }
+        else if (m_isFocused)
+        {
+            borderColor = colors.primary.normal;
+        }
+        else if (m_isHovered)
+        {
+            borderColor = colors.border.hover;
+        }
+        else
+        {
+            borderColor = colors.border.normal;
+        }
+
+        int borderWidth = m_isFocused ? 2 : 1;
+
+        // 배경 및 테두리 그리기
+        DrawRoundedRectD2D(rect, 4, bgColor, borderColor, borderWidth);
+
+        // 입력 영역
+        DrawInputAreaD2D(GetInputRect());
+
+        // 위 버튼
+        DrawUpButtonD2D(GetUpButtonRect());
+
+        // 아래 버튼
+        DrawDownButtonD2D(GetDownButtonRect());
+
+        EndD2DDraw();
+    }
+
+    void CMSpinner::OnDrawGdiPlus(CDC* pDC)
+    {
         CRect rect;
         GetClientRect(&rect);
 
@@ -497,5 +550,169 @@ namespace MFCModernUI
     UINT CMSpinner::OnGetDlgCode()
     {
         return DLGC_WANTARROWS;
+    }
+
+    void CMSpinner::DrawInputAreaD2D(const CRect& rect)
+    {
+        if (!m_pRenderTarget || !m_isD2DDrawing)
+            return;
+
+        const ThemeColors& colors = GetColors();
+
+        // 값 텍스트
+        CString text;
+        text.Format(_T("%d"), m_value);
+
+        COLORREF textColor = m_isEnabled ? colors.text : colors.textDisabled;
+        DrawTextD2D(text, rect, textColor, TextStyle::Body,
+            DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    }
+
+    void CMSpinner::DrawUpButtonD2D(const CRect& rect)
+    {
+        if (!m_pRenderTarget || !m_isD2DDrawing)
+            return;
+
+        const ThemeColors& colors = GetColors();
+
+        // 버튼 배경
+        COLORREF bgColor;
+        if (!m_isEnabled)
+        {
+            bgColor = colors.surface.disabled;
+        }
+        else if (m_pressedArea == ButtonArea::Up)
+        {
+            bgColor = colors.surface.pressed;
+        }
+        else if (m_hoverArea == ButtonArea::Up)
+        {
+            bgColor = colors.surface.hover;
+        }
+        else
+        {
+            bgColor = colors.surface.normal;
+        }
+
+        // 배경 채우기
+        D2D1_RECT_F d2dRect = D2D1::RectF(
+            (float)rect.left, (float)rect.top,
+            (float)rect.right, (float)rect.bottom
+        );
+        m_pSolidBrush->SetColor(ToD2DColor(bgColor));
+        m_pRenderTarget->FillRectangle(d2dRect, m_pSolidBrush);
+
+        // 구분선
+        m_pSolidBrush->SetColor(ToD2DColor(colors.border.normal));
+        m_pRenderTarget->DrawLine(
+            D2D1::Point2F((float)rect.left, (float)rect.top),
+            D2D1::Point2F((float)rect.left, (float)rect.bottom),
+            m_pSolidBrush, 1.0f
+        );
+        m_pRenderTarget->DrawLine(
+            D2D1::Point2F((float)rect.left, (float)(rect.bottom - 1)),
+            D2D1::Point2F((float)rect.right, (float)(rect.bottom - 1)),
+            m_pSolidBrush, 1.0f
+        );
+
+        // 화살표
+        COLORREF arrowColor = m_isEnabled ? colors.text : colors.textDisabled;
+        if (!m_wrap && m_value >= m_maxValue)
+        {
+            arrowColor = colors.textDisabled;
+        }
+
+        DrawArrowD2D(rect, TRUE, arrowColor);
+    }
+
+    void CMSpinner::DrawDownButtonD2D(const CRect& rect)
+    {
+        if (!m_pRenderTarget || !m_isD2DDrawing)
+            return;
+
+        const ThemeColors& colors = GetColors();
+
+        // 버튼 배경
+        COLORREF bgColor;
+        if (!m_isEnabled)
+        {
+            bgColor = colors.surface.disabled;
+        }
+        else if (m_pressedArea == ButtonArea::Down)
+        {
+            bgColor = colors.surface.pressed;
+        }
+        else if (m_hoverArea == ButtonArea::Down)
+        {
+            bgColor = colors.surface.hover;
+        }
+        else
+        {
+            bgColor = colors.surface.normal;
+        }
+
+        // 배경 채우기
+        D2D1_RECT_F d2dRect = D2D1::RectF(
+            (float)rect.left, (float)rect.top,
+            (float)rect.right, (float)rect.bottom
+        );
+        m_pSolidBrush->SetColor(ToD2DColor(bgColor));
+        m_pRenderTarget->FillRectangle(d2dRect, m_pSolidBrush);
+
+        // 구분선
+        m_pSolidBrush->SetColor(ToD2DColor(colors.border.normal));
+        m_pRenderTarget->DrawLine(
+            D2D1::Point2F((float)rect.left, (float)rect.top),
+            D2D1::Point2F((float)rect.left, (float)rect.bottom),
+            m_pSolidBrush, 1.0f
+        );
+
+        // 화살표
+        COLORREF arrowColor = m_isEnabled ? colors.text : colors.textDisabled;
+        if (!m_wrap && m_value <= m_minValue)
+        {
+            arrowColor = colors.textDisabled;
+        }
+
+        DrawArrowD2D(rect, FALSE, arrowColor);
+    }
+
+    void CMSpinner::DrawArrowD2D(const CRect& rect, BOOL up, COLORREF color)
+    {
+        if (!m_pRenderTarget || !m_isD2DDrawing)
+            return;
+
+        float centerX = (float)rect.CenterPoint().x;
+        float centerY = (float)rect.CenterPoint().y;
+        float size = 4.0f;
+
+        ID2D1PathGeometry* pPathGeometry = nullptr;
+        if (FAILED(s_pD2DFactory->CreatePathGeometry(&pPathGeometry)))
+            return;
+
+        ID2D1GeometrySink* pSink = nullptr;
+        if (SUCCEEDED(pPathGeometry->Open(&pSink)))
+        {
+            if (up)
+            {
+                pSink->BeginFigure(D2D1::Point2F(centerX, centerY - size), D2D1_FIGURE_BEGIN_FILLED);
+                pSink->AddLine(D2D1::Point2F(centerX - size, centerY + size / 2));
+                pSink->AddLine(D2D1::Point2F(centerX + size, centerY + size / 2));
+            }
+            else
+            {
+                pSink->BeginFigure(D2D1::Point2F(centerX, centerY + size), D2D1_FIGURE_BEGIN_FILLED);
+                pSink->AddLine(D2D1::Point2F(centerX - size, centerY - size / 2));
+                pSink->AddLine(D2D1::Point2F(centerX + size, centerY - size / 2));
+            }
+            pSink->EndFigure(D2D1_FIGURE_END_CLOSED);
+            pSink->Close();
+            pSink->Release();
+
+            m_pSolidBrush->SetColor(ToD2DColor(color));
+            m_pRenderTarget->FillGeometry(pPathGeometry, m_pSolidBrush);
+        }
+
+        pPathGeometry->Release();
     }
 }

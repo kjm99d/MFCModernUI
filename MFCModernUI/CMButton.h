@@ -88,6 +88,8 @@ namespace MFCModernUI
         // 헬퍼
         void UpdateColors();
         void DrawLoadingSpinner(CDC* pDC, const CRect& rect);
+        void DrawLoadingSpinnerD2D(const CRect& rect);
         void StartColorAnimation(COLORREF targetColor);
+        void OnDrawGdiPlus(CDC* pDC);  // GDI+ 폴백
     };
 }

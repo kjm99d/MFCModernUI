@@ -160,27 +160,91 @@ namespace MFCModernUI
 
     void CMProgressBar::OnDraw(CDC* pDC)
     {
+        // Direct2D 렌더링 시작
+        if (!BeginD2DDraw())
+        {
+            OnDrawGdiPlus(pDC);
+            return;
+        }
+
         CRect rect;
         GetClientRect(&rect);
 
         const ThemeColors& colors = GetColors();
-        int radius = rect.Height() / 2;  // 완전 둥근 모서리
+        int radius = rect.Height() / 2;
 
-        // 트랙 색상
         COLORREF trackColor = m_useDefaultTrackColor ? colors.surface.hover : m_trackColor;
-
-        // 바 색상
         COLORREF barColor = m_useDefaultBarColor ? colors.primary.normal : m_barColor;
 
-        // 트랙 그리기 (GDI+ 안티앨리어싱)
+        // 트랙 그리기 (Direct2D)
+        DrawRoundedRectD2D(rect, radius, trackColor);
+
+        if (m_indeterminate)
+        {
+            int barWidth = rect.Width() / 3;
+            float position = m_indeterminatePosition;
+            if (position > 1.0f)
+                position = 2.0f - position;
+
+            int barLeft = static_cast<int>((rect.Width() - barWidth) * position);
+
+            CRect barRect(
+                rect.left + barLeft,
+                rect.top,
+                rect.left + barLeft + barWidth,
+                rect.bottom
+            );
+
+            DrawRoundedRectD2D(barRect, radius, barColor);
+        }
+        else
+        {
+            if (m_displayValue > 0.0f)
+            {
+                int barWidth = static_cast<int>(rect.Width() * m_displayValue);
+                barWidth = max(rect.Height(), barWidth);
+
+                CRect barRect(
+                    rect.left,
+                    rect.top,
+                    rect.left + barWidth,
+                    rect.bottom
+                );
+
+                DrawRoundedRectD2D(barRect, radius, barColor);
+            }
+
+            if (m_showText)
+            {
+                int percent = static_cast<int>(m_displayValue * 100);
+                CString text;
+                text.Format(_T("%d%%"), percent);
+
+                COLORREF textColor = (m_displayValue > 0.5f) ? colors.textOnPrimary : colors.text;
+                DrawTextD2D(text, rect, textColor, TextStyle::Caption,
+                    DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+            }
+        }
+
+        EndD2DDraw();
+    }
+
+    void CMProgressBar::OnDrawGdiPlus(CDC* pDC)
+    {
+        CRect rect;
+        GetClientRect(&rect);
+
+        const ThemeColors& colors = GetColors();
+        int radius = rect.Height() / 2;
+
+        COLORREF trackColor = m_useDefaultTrackColor ? colors.surface.hover : m_trackColor;
+        COLORREF barColor = m_useDefaultBarColor ? colors.primary.normal : m_barColor;
+
         DrawRoundedRectGdiPlus(pDC, rect, radius, trackColor);
 
         if (m_indeterminate)
         {
-            // 불확정 모드 - 움직이는 바
             int barWidth = rect.Width() / 3;
-
-            // 위치 계산 (왕복 운동)
             float position = m_indeterminatePosition;
             if (position > 1.0f)
                 position = 2.0f - position;
@@ -198,11 +262,10 @@ namespace MFCModernUI
         }
         else
         {
-            // 확정 모드 - 진행률에 따른 바
             if (m_displayValue > 0.0f)
             {
                 int barWidth = static_cast<int>(rect.Width() * m_displayValue);
-                barWidth = max(rect.Height(), barWidth);  // 최소 높이만큼
+                barWidth = max(rect.Height(), barWidth);
 
                 CRect barRect(
                     rect.left,
@@ -214,24 +277,13 @@ namespace MFCModernUI
                 DrawRoundedRectGdiPlus(pDC, barRect, radius, barColor);
             }
 
-            // 퍼센트 텍스트
             if (m_showText)
             {
                 int percent = static_cast<int>(m_displayValue * 100);
                 CString text;
                 text.Format(_T("%d%%"), percent);
 
-                // 텍스트 색상 (바 위에 있으면 흰색, 아니면 기본)
-                COLORREF textColor;
-                if (m_displayValue > 0.5f)
-                {
-                    textColor = colors.textOnPrimary;
-                }
-                else
-                {
-                    textColor = colors.text;
-                }
-
+                COLORREF textColor = (m_displayValue > 0.5f) ? colors.textOnPrimary : colors.text;
                 DrawText(pDC, text, rect, textColor, TextStyle::BodySmall,
                     DT_CENTER | DT_VCENTER | DT_SINGLELINE);
             }

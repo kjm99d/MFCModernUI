@@ -259,6 +259,14 @@ namespace MFCModernUI
 
     void CMButton::OnDraw(CDC* pDC)
     {
+        // Direct2D 렌더링 시작
+        if (!BeginD2DDraw())
+        {
+            // D2D 실패 시 GDI+ 폴백
+            OnDrawGdiPlus(pDC);
+            return;
+        }
+
         CRect rect;
         GetClientRect(&rect);
 
@@ -297,13 +305,14 @@ namespace MFCModernUI
             borderWidth = 2;
         }
 
-        // 배경 그리기 (GDI+ 안티앨리어싱)
-        DrawRoundedRectGdiPlus(pDC, rect, radius, bgColor, borderColor, borderWidth);
+        // 배경 그리기 (Direct2D)
+        DrawRoundedRectD2D(rect, radius, bgColor, borderColor, borderWidth);
 
         // 로딩 상태
         if (m_loading)
         {
-            DrawLoadingSpinner(pDC, rect);
+            DrawLoadingSpinnerD2D(rect);
+            EndD2DDraw();
             return;
         }
 
@@ -315,25 +324,73 @@ namespace MFCModernUI
             CRect textRect = rect;
             textRect.DeflateRect(GetPadding(), 0);
 
-            // 아이콘이 있는 경우 위치 조정
-            if (m_iconId != 0)
-            {
-                // TODO: 아이콘 그리기 구현
-            }
-
             // 텍스트 스타일 결정
             TextStyle textStyle = TextStyle::Body;
             switch (m_controlSize)
             {
             case ControlSize::Small:
-                textStyle = TextStyle::BodySmall;
+                textStyle = TextStyle::Caption;
                 break;
             case ControlSize::Large:
-                textStyle = TextStyle::H6;
+                textStyle = TextStyle::H4;  // Medium size
                 break;
             }
 
-            DrawText(pDC, m_text, textRect, textColor, textStyle,
+            DrawTextD2D(m_text, textRect, textColor, textStyle,
+                DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+        }
+
+        EndD2DDraw();
+    }
+
+    void CMButton::OnDrawGdiPlus(CDC* pDC)
+    {
+        CRect rect;
+        GetClientRect(&rect);
+
+        int radius = (m_cornerRadius >= 0) ? m_cornerRadius : GetThemeManager().GetCornerRadius();
+
+        if (m_scale < 1.0f)
+        {
+            int dx = static_cast<int>(rect.Width() * (1.0f - m_scale) / 2);
+            int dy = static_cast<int>(rect.Height() * (1.0f - m_scale) / 2);
+            rect.DeflateRect(dx, dy);
+        }
+
+        COLORREF bgColor = m_currentBgColor;
+        COLORREF borderColor = CLR_INVALID;
+        int borderWidth = 0;
+
+        if (m_buttonStyle == ButtonStyle::Outline)
+        {
+            borderColor = GetStyleColors().normal;
+            borderWidth = 1;
+            if (m_state == ControlState::Focused)
+            {
+                borderColor = GetColors().borderFocus;
+                borderWidth = 2;
+            }
+        }
+        else if (m_state == ControlState::Focused)
+        {
+            borderColor = GetColors().borderFocus;
+            borderWidth = 2;
+        }
+
+        DrawRoundedRectGdiPlus(pDC, rect, radius, bgColor, borderColor, borderWidth);
+
+        if (m_loading)
+        {
+            DrawLoadingSpinner(pDC, rect);
+            return;
+        }
+
+        COLORREF textColor = GetTextColor();
+        if (!m_iconOnly && !m_text.IsEmpty())
+        {
+            CRect textRect = rect;
+            textRect.DeflateRect(GetPadding(), 0);
+            DrawText(pDC, m_text, textRect, textColor, TextStyle::Body,
                 DT_CENTER | DT_VCENTER | DT_SINGLELINE);
         }
     }
@@ -364,6 +421,69 @@ namespace MFCModernUI
         graphics.DrawArc(&pen, arcRect,
             static_cast<Gdiplus::REAL>(m_loadingAngle),
             270.0f);
+    }
+
+    void CMButton::DrawLoadingSpinnerD2D(const CRect& rect)
+    {
+        if (!m_pRenderTarget || !m_isD2DDrawing)
+            return;
+
+        float centerX = static_cast<float>(rect.CenterPoint().x);
+        float centerY = static_cast<float>(rect.CenterPoint().y);
+        float radius = static_cast<float>(min(rect.Width(), rect.Height())) / 4.0f;
+
+        COLORREF textColor = GetTextColor();
+        m_pSolidBrush->SetColor(ToD2DColor(textColor));
+
+        // Direct2D에서 원호 그리기 (PathGeometry 사용)
+        ID2D1PathGeometry* pPathGeometry = nullptr;
+        ID2D1Factory* pFactory = nullptr;
+        m_pRenderTarget->GetFactory(&pFactory);
+
+        if (SUCCEEDED(pFactory->CreatePathGeometry(&pPathGeometry)))
+        {
+            ID2D1GeometrySink* pSink = nullptr;
+            if (SUCCEEDED(pPathGeometry->Open(&pSink)))
+            {
+                // 시작 각도 (라디안)
+                float startAngle = m_loadingAngle * 3.14159265f / 180.0f;
+                float sweepAngle = 270.0f * 3.14159265f / 180.0f;
+
+                float startX = centerX + radius * cosf(startAngle);
+                float startY = centerY + radius * sinf(startAngle);
+
+                float endX = centerX + radius * cosf(startAngle + sweepAngle);
+                float endY = centerY + radius * sinf(startAngle + sweepAngle);
+
+                pSink->BeginFigure(D2D1::Point2F(startX, startY), D2D1_FIGURE_BEGIN_HOLLOW);
+
+                D2D1_ARC_SEGMENT arc;
+                arc.point = D2D1::Point2F(endX, endY);
+                arc.size = D2D1::SizeF(radius, radius);
+                arc.rotationAngle = 0.0f;
+                arc.sweepDirection = D2D1_SWEEP_DIRECTION_CLOCKWISE;
+                arc.arcSize = D2D1_ARC_SIZE_LARGE;
+
+                pSink->AddArc(arc);
+                pSink->EndFigure(D2D1_FIGURE_END_OPEN);
+                pSink->Close();
+                pSink->Release();
+
+                // 스트로크 스타일 (둥근 끝)
+                D2D1_STROKE_STYLE_PROPERTIES strokeProps = D2D1::StrokeStyleProperties();
+                strokeProps.startCap = D2D1_CAP_STYLE_ROUND;
+                strokeProps.endCap = D2D1_CAP_STYLE_ROUND;
+
+                ID2D1StrokeStyle* pStrokeStyle = nullptr;
+                pFactory->CreateStrokeStyle(strokeProps, nullptr, 0, &pStrokeStyle);
+
+                m_pRenderTarget->DrawGeometry(pPathGeometry, m_pSolidBrush, 2.0f, pStrokeStyle);
+
+                if (pStrokeStyle)
+                    pStrokeStyle->Release();
+            }
+            pPathGeometry->Release();
+        }
     }
 
     void CMButton::OnLButtonUp(UINT nFlags, CPoint point)

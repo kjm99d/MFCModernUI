@@ -294,6 +294,13 @@ namespace MFCModernUI
 
     void CMEdit::OnDraw(CDC* pDC)
     {
+        // Direct2D 렌더링 시작
+        if (!BeginD2DDraw())
+        {
+            OnDrawGdiPlus(pDC);
+            return;
+        }
+
         CRect rect;
         GetClientRect(&rect);
 
@@ -307,14 +314,39 @@ namespace MFCModernUI
         int borderWidth = (m_state == ControlState::Focused) ? 2 : 1;
 
         // 배경 및 테두리 그리기
-        DrawRoundedRect(pDC, rect, radius, bgColor, m_currentBorderColor, borderWidth);
+        DrawRoundedRectD2D(rect, radius, bgColor, m_currentBorderColor, borderWidth);
 
         // 지우기 버튼
         if (IsClearButtonVisible())
         {
-            DrawClearButton(pDC);
+            DrawClearButtonD2D();
         }
         // 유효성 아이콘
+        else if (m_validationState != ValidationState::None)
+        {
+            DrawValidationIconD2D(rect);
+        }
+
+        EndD2DDraw();
+    }
+
+    void CMEdit::OnDrawGdiPlus(CDC* pDC)
+    {
+        CRect rect;
+        GetClientRect(&rect);
+
+        const ThemeColors& colors = GetColors();
+        int radius = GetThemeManager().GetCornerRadius();
+
+        COLORREF bgColor = m_enabled ? colors.surface.normal : colors.surface.disabled;
+        int borderWidth = (m_state == ControlState::Focused) ? 2 : 1;
+
+        DrawRoundedRect(pDC, rect, radius, bgColor, m_currentBorderColor, borderWidth);
+
+        if (IsClearButtonVisible())
+        {
+            DrawClearButton(pDC);
+        }
         else if (m_validationState != ValidationState::None)
         {
             DrawValidationIcon(pDC, rect);
@@ -458,5 +490,85 @@ namespace MFCModernUI
         }
 
         CMControlBase::OnLButtonDown(nFlags, point);
+    }
+
+    void CMEdit::DrawClearButtonD2D()
+    {
+        if (!m_pRenderTarget || !m_isD2DDrawing)
+            return;
+
+        CRect rect;
+        GetClientRect(&rect);
+
+        // 버튼 위치 계산
+        m_clearButtonRect.SetRect(
+            rect.right - 28,
+            rect.top + (rect.Height() - 20) / 2,
+            rect.right - 8,
+            rect.top + (rect.Height() + 20) / 2
+        );
+
+        // X 아이콘 그리기
+        COLORREF iconColor = m_clearButtonHover
+            ? GetColors().text
+            : GetColors().textSecondary;
+
+        m_pSolidBrush->SetColor(ToD2DColor(iconColor));
+
+        int cx = m_clearButtonRect.CenterPoint().x;
+        int cy = m_clearButtonRect.CenterPoint().y;
+        int size = 5;
+
+        // X 라인 그리기
+        m_pRenderTarget->DrawLine(
+            D2D1::Point2F((float)(cx - size), (float)(cy - size)),
+            D2D1::Point2F((float)(cx + size), (float)(cy + size)),
+            m_pSolidBrush,
+            2.0f
+        );
+        m_pRenderTarget->DrawLine(
+            D2D1::Point2F((float)(cx + size), (float)(cy - size)),
+            D2D1::Point2F((float)(cx - size), (float)(cy + size)),
+            m_pSolidBrush,
+            2.0f
+        );
+    }
+
+    void CMEdit::DrawValidationIconD2D(const CRect& rect)
+    {
+        if (!m_pRenderTarget || !m_isD2DDrawing)
+            return;
+
+        const ThemeColors& colors = GetColors();
+        COLORREF iconColor;
+        CString iconText;
+
+        switch (m_validationState)
+        {
+        case ValidationState::Valid:
+            iconColor = colors.success.normal;
+            iconText = _T("\x2713");  // 체크 마크
+            break;
+        case ValidationState::Invalid:
+            iconColor = colors.danger.normal;
+            iconText = _T("\x2717");  // X 마크
+            break;
+        case ValidationState::Warning:
+            iconColor = colors.warning.normal;
+            iconText = _T("!");
+            break;
+        default:
+            return;
+        }
+
+        CRect iconRect(
+            rect.right - 28,
+            rect.top,
+            rect.right - 4,
+            rect.bottom
+        );
+
+        DrawTextD2D(iconText, iconRect, iconColor, TextStyle::Body,
+            DT_CENTER | DT_VCENTER | DT_SINGLELINE);
     }
 }

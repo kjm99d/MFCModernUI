@@ -110,6 +110,11 @@ namespace MFCModernUI
         void PositionDropdown();
         int GetItemHeight() const { return 32; }
         void SelectItem(int index);
+
+        // Direct2D
+        void OnDrawGdiPlus(CDC* pDC);
+        void DrawMainControlD2D();
+        void DrawDropdownArrowD2D(const CRect& rect);
     };
 
     // 드롭다운 윈도우 클래스

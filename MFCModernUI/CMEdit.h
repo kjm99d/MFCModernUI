@@ -107,5 +107,10 @@ namespace MFCModernUI
         BOOL IsClearButtonVisible() const;
         void DrawClearButton(CDC* pDC);
         void DrawValidationIcon(CDC* pDC, const CRect& rect);
+
+        // Direct2D
+        void OnDrawGdiPlus(CDC* pDC);
+        void DrawClearButtonD2D();
+        void DrawValidationIconD2D(const CRect& rect);
     };
 }

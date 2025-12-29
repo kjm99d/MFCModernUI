@@ -347,6 +347,51 @@ namespace MFCModernUI
 
     void CMListView::OnDraw(CDC* pDC)
     {
+        // Direct2D 렌더링 시작
+        if (!BeginD2DDraw())
+        {
+            OnDrawGdiPlus(pDC);
+            return;
+        }
+
+        CRect rect;
+        GetClientRect(&rect);
+
+        const ThemeColors& colors = GetColors();
+        int radius = GetThemeManager().GetCornerRadius();
+
+        // 배경
+        D2D1_RECT_F bgRect = D2D1::RectF(
+            (float)rect.left, (float)rect.top,
+            (float)rect.right, (float)rect.bottom
+        );
+        m_pSolidBrush->SetColor(ToD2DColor(colors.surface.normal));
+        m_pRenderTarget->FillRectangle(bgRect, m_pSolidBrush);
+
+        // 헤더
+        if (m_showHeaders)
+        {
+            CRect headerRect = rect;
+            headerRect.bottom = HEADER_HEIGHT;
+            DrawHeaderD2D(headerRect);
+        }
+
+        // 항목
+        CRect itemsRect = rect;
+        if (m_showHeaders)
+        {
+            itemsRect.top = HEADER_HEIGHT;
+        }
+        DrawItemsD2D(itemsRect);
+
+        // 테두리
+        DrawRoundedRectD2D(rect, radius, 0, colors.border.normal, 1);
+
+        EndD2DDraw();
+    }
+
+    void CMListView::OnDrawGdiPlus(CDC* pDC)
+    {
         CRect rect;
         GetClientRect(&rect);
 
@@ -665,5 +710,161 @@ namespace MFCModernUI
     {
         CMControlBase::OnSize(nType, cx, cy);
         UpdateScrollRange();
+    }
+
+    void CMListView::DrawHeaderD2D(const CRect& rect)
+    {
+        if (!m_pRenderTarget || !m_isD2DDrawing)
+            return;
+
+        const ThemeColors& colors = GetColors();
+
+        // 헤더 배경
+        D2D1_RECT_F headerRect = D2D1::RectF(
+            (float)rect.left, (float)rect.top,
+            (float)rect.right, (float)rect.bottom
+        );
+        m_pSolidBrush->SetColor(ToD2DColor(colors.surface.hover));
+        m_pRenderTarget->FillRectangle(headerRect, m_pSolidBrush);
+
+        // 하단 구분선
+        m_pSolidBrush->SetColor(ToD2DColor(colors.border.normal));
+        m_pRenderTarget->DrawLine(
+            D2D1::Point2F((float)rect.left, (float)(rect.bottom - 1)),
+            D2D1::Point2F((float)rect.right, (float)(rect.bottom - 1)),
+            m_pSolidBrush, 1.0f
+        );
+
+        // 열 헤더 텍스트
+        int x = rect.left + (m_showCheckboxes ? 40 : 8);
+
+        for (const auto& col : m_columns)
+        {
+            CRect colRect(x, rect.top, x + col.width, rect.bottom);
+            DrawTextD2D(col.header, colRect, colors.text, TextStyle::Body,
+                DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+            x += col.width;
+        }
+    }
+
+    void CMListView::DrawItemsD2D(const CRect& rect)
+    {
+        if (!m_pRenderTarget || !m_isD2DDrawing)
+            return;
+
+        // 클리핑 영역 설정
+        m_pRenderTarget->PushAxisAlignedClip(
+            D2D1::RectF((float)rect.left, (float)rect.top, (float)rect.right, (float)rect.bottom),
+            D2D1_ANTIALIAS_MODE_PER_PRIMITIVE
+        );
+
+        int y = rect.top - m_scrollY;
+
+        for (int i = 0; i < static_cast<int>(m_items.size()); i++)
+        {
+            CRect itemRect(rect.left, y, rect.right, y + ROW_HEIGHT);
+
+            // 화면에 보이는 항목만 그리기
+            if (itemRect.bottom > rect.top && itemRect.top < rect.bottom)
+            {
+                DrawItemD2D(i, itemRect);
+            }
+
+            y += ROW_HEIGHT;
+        }
+
+        m_pRenderTarget->PopAxisAlignedClip();
+    }
+
+    void CMListView::DrawItemD2D(int index, const CRect& itemRect)
+    {
+        if (!m_pRenderTarget || !m_isD2DDrawing)
+            return;
+
+        const ThemeColors& colors = GetColors();
+        const ListViewItem& item = m_items[index];
+
+        // 배경
+        COLORREF bgColor = colors.surface.normal;
+
+        if (m_selection[index])
+        {
+            bgColor = colors.primary.normal;
+        }
+        else if (index == m_hoverIndex)
+        {
+            bgColor = colors.surface.hover;
+        }
+        else if (m_alternateRows && (index % 2 == 1))
+        {
+            bgColor = colors.surface.hover;
+        }
+
+        D2D1_RECT_F d2dRect = D2D1::RectF(
+            (float)itemRect.left, (float)itemRect.top,
+            (float)itemRect.right, (float)itemRect.bottom
+        );
+        m_pSolidBrush->SetColor(ToD2DColor(bgColor));
+        m_pRenderTarget->FillRectangle(d2dRect, m_pSolidBrush);
+
+        // 체크박스
+        int x = itemRect.left + 8;
+
+        if (m_showCheckboxes)
+        {
+            CRect checkRect(x, itemRect.top + (ROW_HEIGHT - CHECKBOX_SIZE) / 2,
+                           x + CHECKBOX_SIZE, itemRect.top + (ROW_HEIGHT + CHECKBOX_SIZE) / 2);
+
+            if (item.checked)
+            {
+                // 체크된 배경
+                D2D1_RECT_F d2dCheckRect = D2D1::RectF(
+                    (float)checkRect.left, (float)checkRect.top,
+                    (float)checkRect.right, (float)checkRect.bottom
+                );
+                m_pSolidBrush->SetColor(ToD2DColor(colors.primary.normal));
+                m_pRenderTarget->FillRectangle(d2dCheckRect, m_pSolidBrush);
+
+                // 체크마크
+                m_pSolidBrush->SetColor(ToD2DColor(colors.textOnPrimary));
+                float cx = (float)checkRect.CenterPoint().x;
+                float cy = (float)checkRect.CenterPoint().y;
+
+                m_pRenderTarget->DrawLine(
+                    D2D1::Point2F(cx - 4, cy),
+                    D2D1::Point2F(cx - 1, cy + 3),
+                    m_pSolidBrush, 2.0f
+                );
+                m_pRenderTarget->DrawLine(
+                    D2D1::Point2F(cx - 1, cy + 3),
+                    D2D1::Point2F(cx + 4, cy - 3),
+                    m_pSolidBrush, 2.0f
+                );
+            }
+            else
+            {
+                // 빈 체크박스
+                D2D1_ROUNDED_RECT roundedRect = D2D1::RoundedRect(
+                    D2D1::RectF((float)checkRect.left, (float)checkRect.top,
+                               (float)checkRect.right, (float)checkRect.bottom),
+                    3.0f, 3.0f
+                );
+                m_pSolidBrush->SetColor(ToD2DColor(colors.border.normal));
+                m_pRenderTarget->DrawRoundedRectangle(roundedRect, m_pSolidBrush, 1.0f);
+            }
+
+            x += 32;
+        }
+
+        // 텍스트
+        COLORREF textColor = m_selection[index] ? colors.textOnPrimary : colors.text;
+
+        for (size_t col = 0; col < m_columns.size() && col < item.texts.size(); col++)
+        {
+            CRect textRect(x, itemRect.top, x + m_columns[col].width - 8, itemRect.bottom);
+            DrawTextD2D(item.texts[col], textRect, textColor, TextStyle::Body,
+                DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+            x += m_columns[col].width;
+        }
     }
 }

@@ -140,6 +140,13 @@ namespace MFCModernUI
 
     void CMPanel::OnDraw(CDC* pDC)
     {
+        // Direct2D 렌더링 시작
+        if (!BeginD2DDraw())
+        {
+            OnDrawGdiPlus(pDC);
+            return;
+        }
+
         CRect rect;
         GetClientRect(&rect);
 
@@ -149,7 +156,7 @@ namespace MFCModernUI
         // 그림자 그리기 (메인 패널 전에)
         if (m_shadowLevel != ShadowLevel::None)
         {
-            DrawShadow(pDC, rect);
+            DrawShadowD2D(rect);
         }
 
         // 배경색
@@ -163,7 +170,95 @@ namespace MFCModernUI
         }
 
         // 패널 그리기
+        DrawRoundedRectD2D(rect, radius, bgColor, borderColor, m_borderWidth);
+
+        EndD2DDraw();
+    }
+
+    void CMPanel::OnDrawGdiPlus(CDC* pDC)
+    {
+        CRect rect;
+        GetClientRect(&rect);
+
+        const ThemeColors& colors = GetColors();
+        int radius = (m_cornerRadius >= 0) ? m_cornerRadius : GetThemeManager().GetCornerRadius();
+
+        if (m_shadowLevel != ShadowLevel::None)
+        {
+            DrawShadow(pDC, rect);
+        }
+
+        COLORREF bgColor = m_useDefaultBgColor ? colors.surface.normal : m_backgroundColor;
+
+        COLORREF borderColor = CLR_INVALID;
+        if (m_borderWidth > 0)
+        {
+            borderColor = m_borderColor;
+        }
+
         DrawRoundedRect(pDC, rect, radius, bgColor, borderColor, m_borderWidth);
+    }
+
+    void CMPanel::DrawShadowD2D(const CRect& rect)
+    {
+        if (!m_pRenderTarget || !m_isD2DDrawing)
+            return;
+
+        int offsetY = 0;
+        int blur = 0;
+        int spread = 0;
+        float alpha = 0.0f;
+
+        switch (m_shadowLevel)
+        {
+        case ShadowLevel::Small:
+            offsetY = 1;
+            blur = 2;
+            spread = 0;
+            alpha = 0.08f;
+            break;
+        case ShadowLevel::Medium:
+            offsetY = 4;
+            blur = 6;
+            spread = -1;
+            alpha = 0.12f;
+            break;
+        case ShadowLevel::Large:
+            offsetY = 10;
+            blur = 15;
+            spread = -3;
+            alpha = 0.16f;
+            break;
+        default:
+            return;
+        }
+
+        int radius = (m_cornerRadius >= 0) ? m_cornerRadius : GetThemeManager().GetCornerRadius();
+
+        // 그림자 레이어 그리기
+        for (int i = blur; i >= 1; i -= 2)
+        {
+            float currentAlpha = alpha * static_cast<float>(blur - i + 1) / blur;
+
+            CRect shadowRect = rect;
+            shadowRect.OffsetRect(0, offsetY);
+            shadowRect.InflateRect(i + spread, i + spread);
+
+            m_pSolidBrush->SetColor(ToD2DColor(RGB(0, 0, 0), currentAlpha));
+
+            D2D1_ROUNDED_RECT roundedRect = D2D1::RoundedRect(
+                D2D1::RectF(
+                    static_cast<float>(shadowRect.left),
+                    static_cast<float>(shadowRect.top),
+                    static_cast<float>(shadowRect.right),
+                    static_cast<float>(shadowRect.bottom)
+                ),
+                static_cast<float>(radius + i),
+                static_cast<float>(radius + i)
+            );
+
+            m_pRenderTarget->FillRoundedRectangle(roundedRect, m_pSolidBrush);
+        }
     }
 
     void CMPanel::DrawShadow(CDC* pDC, const CRect& rect)

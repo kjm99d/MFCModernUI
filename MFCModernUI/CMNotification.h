@@ -3,6 +3,13 @@
 #include "CMTypes.h"
 #include "CMThemeManager.h"
 
+// Direct2D
+#include <d2d1.h>
+#include <d2d1_1.h>
+#include <dwrite.h>
+#pragma comment(lib, "d2d1.lib")
+#pragma comment(lib, "dwrite.lib")
+
 // MFC Modern UI - 알림/토스트 컴포넌트
 // SOLID: 단일 책임 원칙 - 알림 메시지 표시만 담당
 
@@ -90,6 +97,27 @@ namespace MFCModernUI
         CRect GetCloseButtonRect();
         COLORREF GetTypeColor() const;
         const ThemeColors& GetColors() const;
+
+        // Direct2D
+        void InitD2D();
+        void ReleaseD2D();
+        BOOL BeginD2DDraw();
+        void EndD2DDraw();
+        static D2D1_COLOR_F ToD2DColor(COLORREF color, float alpha = 1.0f);
+
+        void OnDrawD2D();
+        void DrawIconD2D(const CRect& rect);
+        void DrawCloseButtonD2D(const CRect& rect);
+
+        // Direct2D 리소스
+        static ID2D1Factory* s_pD2DFactory;
+        static IDWriteFactory* s_pDWriteFactory;
+        static int s_d2dRefCount;
+
+        ID2D1HwndRenderTarget* m_pRenderTarget;
+        ID2D1SolidColorBrush* m_pSolidBrush;
+        IDWriteTextFormat* m_pTextFormat;
+        BOOL m_isD2DDrawing;
     };
 
     // 알림 매니저 (싱글톤)

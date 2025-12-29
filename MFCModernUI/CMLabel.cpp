@@ -105,11 +105,15 @@ namespace MFCModernUI
 
     void CMLabel::OnDraw(CDC* pDC)
     {
+        // Direct2D 렌더링 시작
+        if (!BeginD2DDraw())
+        {
+            OnDrawGdiPlus(pDC);
+            return;
+        }
+
         CRect rect;
         GetClientRect(&rect);
-
-        // 배경 (투명)
-        pDC->FillSolidRect(rect, GetColors().background.normal);
 
         // 텍스트 색상
         COLORREF textColor = m_useDefaultColor
@@ -135,7 +139,50 @@ namespace MFCModernUI
         if (m_wordWrap)
         {
             format |= DT_WORDBREAK;
-            format &= ~DT_VCENTER;  // 멀티라인에서는 세로 중앙 정렬 불가
+            format &= ~DT_VCENTER;
+            format |= DT_TOP;
+        }
+        else
+        {
+            format |= DT_SINGLELINE;
+        }
+
+        // Direct2D 텍스트 렌더링
+        DrawTextD2D(m_text, rect, textColor, m_textStyle, format);
+
+        EndD2DDraw();
+    }
+
+    void CMLabel::OnDrawGdiPlus(CDC* pDC)
+    {
+        CRect rect;
+        GetClientRect(&rect);
+
+        pDC->FillSolidRect(rect, GetColors().background.normal);
+
+        COLORREF textColor = m_useDefaultColor
+            ? (m_enabled ? GetColors().text : GetColors().textDisabled)
+            : m_textColor;
+
+        UINT format = DT_VCENTER;
+
+        switch (m_textAlign)
+        {
+        case TextAlign::Left:
+            format |= DT_LEFT;
+            break;
+        case TextAlign::Center:
+            format |= DT_CENTER;
+            break;
+        case TextAlign::Right:
+            format |= DT_RIGHT;
+            break;
+        }
+
+        if (m_wordWrap)
+        {
+            format |= DT_WORDBREAK;
+            format &= ~DT_VCENTER;
             format |= DT_TOP;
         }
         else
@@ -148,7 +195,6 @@ namespace MFCModernUI
             format |= DT_END_ELLIPSIS;
         }
 
-        // 폰트 설정
         CFont* pFont = GetThemeManager().GetFont(m_textStyle);
         CFont* pOldFont = pDC->SelectObject(pFont);
         COLORREF oldColor = pDC->SetTextColor(textColor);

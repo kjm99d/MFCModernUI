@@ -129,35 +129,74 @@ namespace MFCModernUI
 
     void CMSlider::OnDraw(CDC* pDC)
     {
+        // Direct2D 렌더링 시작
+        if (!BeginD2DDraw())
+        {
+            OnDrawGdiPlus(pDC);
+            return;
+        }
+
         CRect rect;
         GetClientRect(&rect);
 
         const ThemeColors& colors = GetColors();
 
-        // 배경
+        // 트랙 그리기
+        CRect trackRect = GetTrackRect();
+        DrawTrackD2D(trackRect);
+
+        // 눈금 그리기
+        if (m_showTicks)
+        {
+            DrawTicksD2D(trackRect);
+        }
+
+        // 썸 그리기
+        CRect thumbRect = GetThumbRect();
+        DrawThumbD2D(thumbRect);
+
+        // 값 레이블 그리기
+        if (m_showValue && (m_dragging || m_isHovered))
+        {
+            DrawValueLabelD2D(thumbRect);
+        }
+
+        // 포커스 표시
+        if (m_isFocused)
+        {
+            CRect focusRect = thumbRect;
+            focusRect.InflateRect(2, 2);
+            DrawCircleD2D(focusRect, CLR_INVALID, colors.primary.normal, 1);
+        }
+
+        EndD2DDraw();
+    }
+
+    void CMSlider::OnDrawGdiPlus(CDC* pDC)
+    {
+        CRect rect;
+        GetClientRect(&rect);
+
+        const ThemeColors& colors = GetColors();
+
         pDC->FillSolidRect(rect, colors.background.normal);
 
-        // 트랙 그리기
         CRect trackRect = GetTrackRect();
         DrawTrack(pDC, trackRect);
 
-        // 눈금 그리기
         if (m_showTicks)
         {
             DrawTicks(pDC, trackRect);
         }
 
-        // 썸 그리기
         CRect thumbRect = GetThumbRect();
         DrawThumb(pDC, thumbRect);
 
-        // 값 레이블 그리기
         if (m_showValue && (m_dragging || m_isHovered))
         {
             DrawValueLabel(pDC, thumbRect);
         }
 
-        // 포커스 표시
         if (m_isFocused)
         {
             CRect focusRect = thumbRect;
@@ -307,6 +346,137 @@ namespace MFCModernUI
 
         // 텍스트
         DrawText(pDC, text, labelRect, colors.text, TextStyle::Caption,
+            DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    }
+
+    void CMSlider::DrawTrackD2D(const CRect& trackRect)
+    {
+        if (!m_pRenderTarget || !m_isD2DDrawing)
+            return;
+
+        const ThemeColors& colors = GetColors();
+        int radius = TRACK_THICKNESS / 2;
+
+        COLORREF trackColor = m_isEnabled ? colors.surface.hover : colors.surface.disabled;
+        DrawRoundedRectD2D(trackRect, radius, trackColor);
+
+        if (m_value > m_minValue)
+        {
+            CRect filledRect = trackRect;
+            int thumbPos = ValueToPosition(m_value);
+
+            if (m_orientation == Orientation::Horizontal)
+                filledRect.right = thumbPos;
+            else
+                filledRect.top = thumbPos;
+
+            COLORREF fillColor = m_isEnabled ? colors.primary.normal : colors.primary.disabled;
+            DrawRoundedRectD2D(filledRect, radius, fillColor);
+        }
+    }
+
+    void CMSlider::DrawThumbD2D(const CRect& thumbRect)
+    {
+        if (!m_pRenderTarget || !m_isD2DDrawing)
+            return;
+
+        const ThemeColors& colors = GetColors();
+        int size = (m_isHovered || m_dragging) ? THUMB_HOVER_SIZE : THUMB_SIZE;
+
+        CRect drawRect = thumbRect;
+        int diff = (THUMB_HOVER_SIZE - size) / 2;
+        drawRect.InflateRect(-diff, -diff);
+
+        COLORREF thumbColor;
+        if (!m_isEnabled)
+            thumbColor = colors.surface.disabled;
+        else if (m_dragging)
+            thumbColor = colors.primary.pressed;
+        else if (m_isHovered)
+            thumbColor = colors.primary.hover;
+        else
+            thumbColor = colors.primary.normal;
+
+        // 그림자
+        if (m_isEnabled)
+        {
+            CRect shadowRect = drawRect;
+            shadowRect.OffsetRect(1, 2);
+            m_pSolidBrush->SetColor(ToD2DColor(RGB(0, 0, 0), 0.2f));
+            D2D1_ELLIPSE shadowEllipse = D2D1::Ellipse(
+                D2D1::Point2F(static_cast<float>(shadowRect.CenterPoint().x), static_cast<float>(shadowRect.CenterPoint().y)),
+                static_cast<float>(shadowRect.Width()) / 2.0f,
+                static_cast<float>(shadowRect.Height()) / 2.0f
+            );
+            m_pRenderTarget->FillEllipse(shadowEllipse, m_pSolidBrush);
+        }
+
+        DrawCircleD2D(drawRect, thumbColor);
+    }
+
+    void CMSlider::DrawTicksD2D(const CRect& trackRect)
+    {
+        if (!m_pRenderTarget || !m_isD2DDrawing)
+            return;
+
+        const ThemeColors& colors = GetColors();
+        m_pSolidBrush->SetColor(ToD2DColor(colors.textSecondary));
+
+        int tickCount = (m_maxValue - m_minValue) / m_step;
+        if (tickCount > 20) tickCount = 20;
+
+        for (int i = 0; i <= tickCount; i++)
+        {
+            int value = m_minValue + (i * (m_maxValue - m_minValue)) / tickCount;
+            int pos = ValueToPosition(value);
+
+            if (m_orientation == Orientation::Horizontal)
+            {
+                m_pRenderTarget->DrawLine(
+                    D2D1::Point2F(static_cast<float>(pos), static_cast<float>(trackRect.bottom + 4)),
+                    D2D1::Point2F(static_cast<float>(pos), static_cast<float>(trackRect.bottom + 8)),
+                    m_pSolidBrush, 1.0f
+                );
+            }
+            else
+            {
+                m_pRenderTarget->DrawLine(
+                    D2D1::Point2F(static_cast<float>(trackRect.right + 4), static_cast<float>(pos)),
+                    D2D1::Point2F(static_cast<float>(trackRect.right + 8), static_cast<float>(pos)),
+                    m_pSolidBrush, 1.0f
+                );
+            }
+        }
+    }
+
+    void CMSlider::DrawValueLabelD2D(const CRect& thumbRect)
+    {
+        if (!m_pRenderTarget || !m_isD2DDrawing)
+            return;
+
+        const ThemeColors& colors = GetColors();
+
+        CString text;
+        text.Format(_T("%d"), m_value);
+
+        CRect labelRect;
+        if (m_orientation == Orientation::Horizontal)
+        {
+            labelRect.left = thumbRect.CenterPoint().x - 20;
+            labelRect.right = thumbRect.CenterPoint().x + 20;
+            labelRect.bottom = thumbRect.top - 4;
+            labelRect.top = labelRect.bottom - 20;
+        }
+        else
+        {
+            labelRect.left = thumbRect.right + 4;
+            labelRect.right = labelRect.left + 40;
+            labelRect.top = thumbRect.CenterPoint().y - 10;
+            labelRect.bottom = labelRect.top + 20;
+        }
+
+        DrawRoundedRectD2D(labelRect, 4, colors.surface.normal);
+        DrawTextD2D(text, labelRect, colors.text, TextStyle::Caption,
             DT_CENTER | DT_VCENTER | DT_SINGLELINE);
     }
 

@@ -7,6 +7,14 @@
 #include <gdiplus.h>
 #pragma comment(lib, "gdiplus.lib")
 
+// Direct2D
+#include <d2d1.h>
+#include <d2d1_1.h>
+#include <dwrite.h>
+#include <wincodec.h>
+#pragma comment(lib, "d2d1.lib")
+#pragma comment(lib, "dwrite.lib")
+
 // MFC Modern UI - 컨트롤 기본 클래스
 // SOLID: 개방-폐쇄 원칙 - 확장에 열려있고 수정에 닫혀있음
 // SOLID: 리스코프 치환 원칙 - 파생 클래스가 기본 클래스를 대체 가능
@@ -71,6 +79,24 @@ namespace MFCModernUI
         static Gdiplus::Color ToGdiplusColor(COLORREF color, BYTE alpha = 255);
         static void CreateRoundedRectPath(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& rect, float radius);
 
+        // Direct2D 유틸리티
+        void DrawRoundedRectD2D(const CRect& rect, int radius, COLORREF fillColor, COLORREF borderColor = CLR_INVALID, int borderWidth = 0);
+        void DrawCircleD2D(const CRect& rect, COLORREF fillColor, COLORREF borderColor = CLR_INVALID, int borderWidth = 0);
+        void DrawEllipseD2D(const CRect& rect, COLORREF fillColor, COLORREF borderColor = CLR_INVALID, int borderWidth = 0);
+        void DrawLineD2D(int x1, int y1, int x2, int y2, COLORREF color, int width = 1);
+        void DrawTextD2D(const CString& text, const CRect& rect, COLORREF color, TextStyle style = TextStyle::Body, UINT format = DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+        // Direct2D 헬퍼
+        static D2D1_COLOR_F ToD2DColor(COLORREF color, float alpha = 1.0f);
+        ID2D1RenderTarget* GetRenderTarget();
+        ID2D1SolidColorBrush* GetSolidBrush(COLORREF color, float alpha = 1.0f);
+        IDWriteTextFormat* GetTextFormat(TextStyle style);
+
+        // Direct2D 렌더링 시작/종료
+        BOOL BeginD2DDraw();
+        void EndD2DDraw();
+        BOOL IsD2DDrawing() const { return m_isD2DDrawing; }
+
         // 크기 헬퍼
         int GetHeight() const;
         int GetPadding() const;
@@ -119,7 +145,24 @@ namespace MFCModernUI
         COLORREF m_currentBgColor;
         COLORREF m_currentBorderColor;
 
+        // Direct2D 렌더링 상태
+        BOOL m_isD2DDrawing;
+
+        // Direct2D 리소스 (파생 클래스에서 직접 접근 가능)
+        static ID2D1Factory* s_pD2DFactory;
+        static IDWriteFactory* s_pDWriteFactory;
+        static int s_d2dRefCount;
+
+        ID2D1HwndRenderTarget* m_pRenderTarget;
+        ID2D1SolidColorBrush* m_pSolidBrush;
+        IDWriteTextFormat* m_pTextFormats[4];  // Body, Caption, Subtitle, Title
+
     private:
+        // Direct2D 초기화/해제
+        static BOOL InitD2DFactory();
+        static void ReleaseD2DFactory();
+        BOOL CreateDeviceResources();
+        void DiscardDeviceResources();
         // 테마 변경 콜백
         static void OnThemeChanged(void* context);
         void HandleThemeChanged();

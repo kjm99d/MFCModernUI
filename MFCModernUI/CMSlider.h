@@ -104,5 +104,12 @@ namespace MFCModernUI
         int PositionToValue(int pos);
         int ValueToPosition(int value);
         void SetValueFromPosition(int pos);
+
+        // Direct2D
+        void OnDrawGdiPlus(CDC* pDC);
+        void DrawTrackD2D(const CRect& trackRect);
+        void DrawThumbD2D(const CRect& thumbRect);
+        void DrawTicksD2D(const CRect& trackRect);
+        void DrawValueLabelD2D(const CRect& thumbRect);
     };
 }

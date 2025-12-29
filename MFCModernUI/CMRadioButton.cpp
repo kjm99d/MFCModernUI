@@ -165,6 +165,13 @@ namespace MFCModernUI
 
     void CMRadioButton::OnDraw(CDC* pDC)
     {
+        // Direct2D 렌더링 시작
+        if (!BeginD2DDraw())
+        {
+            OnDrawGdiPlus(pDC);
+            return;
+        }
+
         CRect rect;
         GetClientRect(&rect);
 
@@ -172,7 +179,6 @@ namespace MFCModernUI
         int circleSize = SizeConstants::RadioButtonSize;
         int spacing = 8;
 
-        // 라디오 버튼 위치 계산
         CRect circleRect;
         CRect textRect = rect;
 
@@ -184,13 +190,43 @@ namespace MFCModernUI
         );
         textRect.left = circleRect.right + spacing;
 
-        // 배경
-        pDC->FillSolidRect(rect, colors.background.normal);
-
-        // 라디오 버튼 그리기
-        DrawRadioButton(pDC, circleRect);
+        // 라디오 버튼 그리기 (Direct2D)
+        DrawRadioButtonD2D(circleRect);
 
         // 텍스트 그리기
+        if (!m_text.IsEmpty())
+        {
+            COLORREF textColor = m_enabled ? colors.text : colors.textDisabled;
+            DrawTextD2D(m_text, textRect, textColor, TextStyle::Body,
+                DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+        }
+
+        EndD2DDraw();
+    }
+
+    void CMRadioButton::OnDrawGdiPlus(CDC* pDC)
+    {
+        CRect rect;
+        GetClientRect(&rect);
+
+        const ThemeColors& colors = GetColors();
+        int circleSize = SizeConstants::RadioButtonSize;
+        int spacing = 8;
+
+        CRect circleRect;
+        CRect textRect = rect;
+
+        circleRect.SetRect(
+            rect.left,
+            rect.top + (rect.Height() - circleSize) / 2,
+            rect.left + circleSize,
+            rect.top + (rect.Height() + circleSize) / 2
+        );
+        textRect.left = circleRect.right + spacing;
+
+        pDC->FillSolidRect(rect, colors.background.normal);
+        DrawRadioButton(pDC, circleRect);
+
         if (!m_text.IsEmpty())
         {
             COLORREF textColor = m_enabled ? colors.text : colors.textDisabled;
@@ -278,6 +314,68 @@ namespace MFCModernUI
                 cy + currentRadius
             );
             DrawCircleGdiPlus(pDC, innerRect, innerColor);
+        }
+    }
+
+    void CMRadioButton::DrawRadioButtonD2D(const CRect& circleRect)
+    {
+        if (!m_pRenderTarget || !m_isD2DDrawing)
+            return;
+
+        const ThemeColors& colors = GetColors();
+        int cx = circleRect.CenterPoint().x;
+        int cy = circleRect.CenterPoint().y;
+        int innerRadius = SizeConstants::RadioInnerSize / 2;
+
+        COLORREF borderColor;
+        int borderWidth = 2;
+
+        if (!m_enabled)
+        {
+            borderColor = colors.border.disabled;
+        }
+        else if (m_selected)
+        {
+            borderColor = (m_state == ControlState::Hover) ? colors.primary.hover : colors.primary.normal;
+        }
+        else
+        {
+            switch (m_state)
+            {
+            case ControlState::Hover:
+                borderColor = colors.border.hover;
+                break;
+            case ControlState::Focused:
+                borderColor = colors.borderFocus;
+                break;
+            default:
+                borderColor = colors.border.normal;
+                break;
+            }
+        }
+
+        DrawCircleD2D(circleRect, colors.surface.normal, borderColor, borderWidth);
+
+        if (m_innerCircleScale > 0.0f)
+        {
+            COLORREF innerColor;
+            if (!m_enabled)
+            {
+                innerColor = colors.textDisabled;
+            }
+            else
+            {
+                innerColor = (m_state == ControlState::Hover) ? colors.primary.hover : colors.primary.normal;
+            }
+
+            int currentRadius = static_cast<int>(innerRadius * m_innerCircleScale);
+            CRect innerRect(
+                cx - currentRadius,
+                cy - currentRadius,
+                cx + currentRadius,
+                cy + currentRadius
+            );
+            DrawCircleD2D(innerRect, innerColor);
         }
     }
 

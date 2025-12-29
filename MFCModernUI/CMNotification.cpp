@@ -40,11 +40,18 @@ namespace MFCModernUI
 
     CMNotificationWindow::~CMNotificationWindow()
     {
-        if (m_timerId)
+        // 타이머 정리는 윈도우가 유효할 때만 수행
+        if (m_timerId && ::IsWindow(m_hWnd))
         {
             KillTimer(m_timerId);
         }
         ReleaseD2D();
+    }
+
+    void CMNotificationWindow::PostNcDestroy()
+    {
+        CWnd::PostNcDestroy();
+        delete this;
     }
 
     void CMNotificationWindow::InitD2D()
@@ -671,11 +678,13 @@ namespace MFCModernUI
 
     CMNotificationManager::~CMNotificationManager()
     {
-        HideAllNotifications();
-
+        // 모든 알림 창 닫기 (PostNcDestroy에서 자동 삭제됨)
         for (INT_PTR i = 0; i < m_notifications.GetSize(); i++)
         {
-            delete m_notifications[i];
+            if (m_notifications[i]->GetSafeHwnd())
+            {
+                m_notifications[i]->DestroyWindow();
+            }
         }
         m_notifications.RemoveAll();
     }
@@ -687,9 +696,12 @@ namespace MFCModernUI
         while (m_notifications.GetSize() >= m_maxVisible)
         {
             CMNotificationWindow* oldest = m_notifications[0];
-            oldest->Hide();
             m_notifications.RemoveAt(0);
-            delete oldest;
+            // DestroyWindow 호출 시 PostNcDestroy에서 자동 삭제됨
+            if (oldest->GetSafeHwnd())
+            {
+                oldest->DestroyWindow();
+            }
         }
 
         // 새 알림 창 생성
@@ -710,22 +722,22 @@ namespace MFCModernUI
 
     int CMNotificationManager::ShowInfo(LPCTSTR message, DWORD duration)
     {
-        return ShowNotification(NotificationType::Info, _T("정보"), message, duration);
+        return ShowNotification(NotificationType::Info, _T("INFO"), message, duration);
     }
 
     int CMNotificationManager::ShowSuccess(LPCTSTR message, DWORD duration)
     {
-        return ShowNotification(NotificationType::Success, _T("성공"), message, duration);
+        return ShowNotification(NotificationType::Success, _T("SUCCESS"), message, duration);
     }
 
     int CMNotificationManager::ShowWarning(LPCTSTR message, DWORD duration)
     {
-        return ShowNotification(NotificationType::Warning, _T("경고"), message, duration);
+        return ShowNotification(NotificationType::Warning, _T("WARNING"), message, duration);
     }
 
     int CMNotificationManager::ShowError(LPCTSTR message, DWORD duration)
     {
-        return ShowNotification(NotificationType::Error, _T("오류"), message, duration);
+        return ShowNotification(NotificationType::Error, _T("ERROR"), message, duration);
     }
 
     void CMNotificationManager::HideNotification(int id)
@@ -874,8 +886,11 @@ namespace MFCModernUI
                     m_closeHandler(m_closeContext, id);
                 }
 
-                // 창 삭제 (지연)
-                notification->PostMessage(WM_CLOSE);
+                // 창 파괴 (PostNcDestroy에서 자동 삭제됨)
+                if (notification->GetSafeHwnd())
+                {
+                    notification->DestroyWindow();
+                }
 
                 RepositionNotifications();
                 break;

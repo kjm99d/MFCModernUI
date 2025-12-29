@@ -59,6 +59,8 @@ namespace MFCModernUI
         void SetCloseHandler(NotificationCloseHandler handler, void* context);
 
     protected:
+        virtual void PostNcDestroy() override;
+
         afx_msg void OnPaint();
         afx_msg BOOL OnEraseBkgnd(CDC* pDC);
         afx_msg void OnTimer(UINT_PTR nIDEvent);

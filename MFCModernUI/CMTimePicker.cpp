@@ -176,8 +176,12 @@ namespace MFCModernUI
         CString timeText = FormatTime();
         COLORREF textColor = m_isEnabled ? colors.text : colors.textDisabled;
 
-        DrawText(pDC, timeText, textRect, textColor, TextStyle::Body,
-            DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+        CFont* pFont = CMThemeManager::GetInstance().GetFont(TextStyle::Body);
+        CFont* oldFont = pDC->SelectObject(pFont);
+        pDC->SetBkMode(TRANSPARENT);
+        pDC->SetTextColor(textColor);
+        pDC->DrawText(timeText, textRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+        pDC->SelectObject(oldFont);
     }
 
     void CMTimePicker::DrawButton(CDC* pDC, const CRect& rect)

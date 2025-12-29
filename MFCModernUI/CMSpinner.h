@@ -103,7 +103,6 @@ namespace MFCModernUI
         void StopRepeatTimer();
 
         // Direct2D
-        void OnDrawGdiPlus(CDC* pDC);
         void DrawInputAreaD2D(const CRect& rect);
         void DrawUpButtonD2D(const CRect& rect);
         void DrawDownButtonD2D(const CRect& rect);

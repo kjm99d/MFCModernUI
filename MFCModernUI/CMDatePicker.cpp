@@ -174,8 +174,12 @@ namespace MFCModernUI
         CString dateText = FormatDate(m_date);
         COLORREF textColor = m_isEnabled ? colors.text : colors.textDisabled;
 
-        DrawText(pDC, dateText, textRect, textColor, TextStyle::Body,
-            DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+        CFont* pFont = CMThemeManager::GetInstance().GetFont(TextStyle::Body);
+        CFont* oldFont = pDC->SelectObject(pFont);
+        pDC->SetBkMode(TRANSPARENT);
+        pDC->SetTextColor(textColor);
+        pDC->DrawText(dateText, textRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+        pDC->SelectObject(oldFont);
     }
 
     void CMDatePicker::DrawButton(CDC* pDC, const CRect& rect)

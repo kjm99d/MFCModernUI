@@ -112,7 +112,6 @@ namespace MFCModernUI
         void SelectItem(int index);
 
         // Direct2D
-        void OnDrawGdiPlus(CDC* pDC);
         void DrawMainControlD2D();
         void DrawDropdownArrowD2D(const CRect& rect);
     };

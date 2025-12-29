@@ -167,10 +167,7 @@ namespace MFCModernUI
     {
         // Direct2D 렌더링 시작
         if (!BeginD2DDraw())
-        {
-            OnDrawGdiPlus(pDC);
             return;
-        }
 
         CRect rect;
         GetClientRect(&rect);
@@ -202,119 +199,6 @@ namespace MFCModernUI
         }
 
         EndD2DDraw();
-    }
-
-    void CMRadioButton::OnDrawGdiPlus(CDC* pDC)
-    {
-        CRect rect;
-        GetClientRect(&rect);
-
-        const ThemeColors& colors = GetColors();
-        int circleSize = SizeConstants::RadioButtonSize;
-        int spacing = 8;
-
-        CRect circleRect;
-        CRect textRect = rect;
-
-        circleRect.SetRect(
-            rect.left,
-            rect.top + (rect.Height() - circleSize) / 2,
-            rect.left + circleSize,
-            rect.top + (rect.Height() + circleSize) / 2
-        );
-        textRect.left = circleRect.right + spacing;
-
-        pDC->FillSolidRect(rect, colors.background.normal);
-        DrawRadioButton(pDC, circleRect);
-
-        if (!m_text.IsEmpty())
-        {
-            COLORREF textColor = m_enabled ? colors.text : colors.textDisabled;
-            DrawText(pDC, m_text, textRect, textColor, TextStyle::Body,
-                DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-        }
-    }
-
-    void CMRadioButton::DrawRadioButton(CDC* pDC, const CRect& circleRect)
-    {
-        const ThemeColors& colors = GetColors();
-        int cx = circleRect.CenterPoint().x;
-        int cy = circleRect.CenterPoint().y;
-        int outerRadius = circleRect.Width() / 2;
-        int innerRadius = SizeConstants::RadioInnerSize / 2;
-
-        // 외부 원
-        COLORREF borderColor;
-        int borderWidth = 2;
-
-        if (!m_enabled)
-        {
-            borderColor = colors.border.disabled;
-        }
-        else if (m_selected)
-        {
-            switch (m_state)
-            {
-            case ControlState::Hover:
-                borderColor = colors.primary.hover;
-                break;
-            default:
-                borderColor = colors.primary.normal;
-                break;
-            }
-        }
-        else
-        {
-            switch (m_state)
-            {
-            case ControlState::Hover:
-                borderColor = colors.border.hover;
-                break;
-            case ControlState::Focused:
-                borderColor = colors.borderFocus;
-                break;
-            default:
-                borderColor = colors.border.normal;
-                break;
-            }
-        }
-
-        // GDI+로 외부 원 그리기 (안티앨리어싱)
-        DrawCircleGdiPlus(pDC, circleRect, colors.surface.normal, borderColor, borderWidth);
-
-        // 내부 원 (선택됨)
-        if (m_innerCircleScale > 0.0f)
-        {
-            COLORREF innerColor;
-
-            if (!m_enabled)
-            {
-                innerColor = colors.textDisabled;
-            }
-            else
-            {
-                switch (m_state)
-                {
-                case ControlState::Hover:
-                    innerColor = colors.primary.hover;
-                    break;
-                default:
-                    innerColor = colors.primary.normal;
-                    break;
-                }
-            }
-
-            int currentRadius = static_cast<int>(innerRadius * m_innerCircleScale);
-
-            // GDI+로 내부 원 그리기
-            CRect innerRect(
-                cx - currentRadius,
-                cy - currentRadius,
-                cx + currentRadius,
-                cy + currentRadius
-            );
-            DrawCircleGdiPlus(pDC, innerRect, innerColor);
-        }
     }
 
     void CMRadioButton::DrawRadioButtonD2D(const CRect& circleRect)

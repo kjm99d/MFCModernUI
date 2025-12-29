@@ -130,7 +130,6 @@ namespace MFCModernUI
         void CloseTab(int index);
 
         // Direct2D
-        void OnDrawGdiPlus(CDC* pDC);
         void DrawTabD2D(int index, const CRect& tabRect);
         void DrawCloseButtonD2D(const CRect& rect, BOOL hover);
         void DrawBadgeD2D(const CRect& tabRect, const CString& badge);

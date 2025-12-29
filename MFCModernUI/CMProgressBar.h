@@ -75,7 +75,5 @@ namespace MFCModernUI
         void StartValueAnimation(float targetValue);
         float GetProgress() const;
 
-        // Direct2D
-        void OnDrawGdiPlus(CDC* pDC);
     };
 }

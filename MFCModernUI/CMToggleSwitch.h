@@ -75,7 +75,6 @@ namespace MFCModernUI
         void DrawKnob(CDC* pDC, const CRect& trackRect);
 
         // Direct2D
-        void OnDrawGdiPlus(CDC* pDC);
         void DrawTrackD2D(const CRect& trackRect);
         void DrawKnobD2D(const CRect& trackRect);
     };

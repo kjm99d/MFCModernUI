@@ -162,10 +162,7 @@ namespace MFCModernUI
     {
         // Direct2D 렌더링 시작
         if (!BeginD2DDraw())
-        {
-            OnDrawGdiPlus(pDC);
             return;
-        }
 
         CRect rect;
         GetClientRect(&rect);
@@ -227,67 +224,6 @@ namespace MFCModernUI
         }
 
         EndD2DDraw();
-    }
-
-    void CMProgressBar::OnDrawGdiPlus(CDC* pDC)
-    {
-        CRect rect;
-        GetClientRect(&rect);
-
-        const ThemeColors& colors = GetColors();
-        int radius = rect.Height() / 2;
-
-        COLORREF trackColor = m_useDefaultTrackColor ? colors.surface.hover : m_trackColor;
-        COLORREF barColor = m_useDefaultBarColor ? colors.primary.normal : m_barColor;
-
-        DrawRoundedRectGdiPlus(pDC, rect, radius, trackColor);
-
-        if (m_indeterminate)
-        {
-            int barWidth = rect.Width() / 3;
-            float position = m_indeterminatePosition;
-            if (position > 1.0f)
-                position = 2.0f - position;
-
-            int barLeft = static_cast<int>((rect.Width() - barWidth) * position);
-
-            CRect barRect(
-                rect.left + barLeft,
-                rect.top,
-                rect.left + barLeft + barWidth,
-                rect.bottom
-            );
-
-            DrawRoundedRectGdiPlus(pDC, barRect, radius, barColor);
-        }
-        else
-        {
-            if (m_displayValue > 0.0f)
-            {
-                int barWidth = static_cast<int>(rect.Width() * m_displayValue);
-                barWidth = max(rect.Height(), barWidth);
-
-                CRect barRect(
-                    rect.left,
-                    rect.top,
-                    rect.left + barWidth,
-                    rect.bottom
-                );
-
-                DrawRoundedRectGdiPlus(pDC, barRect, radius, barColor);
-            }
-
-            if (m_showText)
-            {
-                int percent = static_cast<int>(m_displayValue * 100);
-                CString text;
-                text.Format(_T("%d%%"), percent);
-
-                COLORREF textColor = (m_displayValue > 0.5f) ? colors.textOnPrimary : colors.text;
-                DrawText(pDC, text, rect, textColor, TextStyle::BodySmall,
-                    DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-            }
-        }
     }
 
     void CMProgressBar::OnTimer(UINT_PTR nIDEvent)

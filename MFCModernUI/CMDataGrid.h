@@ -226,11 +226,11 @@ namespace MFCModernUI
         GridColumnSortHandler m_columnSortHandler;
         void* m_columnSortContext;
 
-        // 헬퍼
-        void DrawHeader(CDC* pDC, const CRect& rect);
-        void DrawRows(CDC* pDC, const CRect& rect);
-        void DrawCell(CDC* pDC, int row, int col, const CRect& rect);
-        void DrawSortIndicator(CDC* pDC, const CRect& rect, ColumnSortOrder order);
+        // 헬퍼 (Direct2D)
+        void DrawHeader(const CRect& rect);
+        void DrawRows(const CRect& rect);
+        void DrawCell(int row, int col, const CRect& rect);
+        void DrawSortIndicator(const CRect& rect, ColumnSortOrder order);
 
         int GetColumnX(int col);
         int HitTestColumn(CPoint point);

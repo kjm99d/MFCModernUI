@@ -106,7 +106,6 @@ namespace MFCModernUI
         void SetValueFromPosition(int pos);
 
         // Direct2D
-        void OnDrawGdiPlus(CDC* pDC);
         void DrawTrackD2D(const CRect& trackRect);
         void DrawThumbD2D(const CRect& thumbRect);
         void DrawTicksD2D(const CRect& trackRect);

@@ -196,8 +196,12 @@ namespace MFCModernUI
         CString hexText = ColorToHex(m_color);
         COLORREF textColor = m_isEnabled ? colors.text : colors.textDisabled;
 
-        DrawText(pDC, hexText, textRect, textColor, TextStyle::Body,
-            DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+        CFont* pFont = CMThemeManager::GetInstance().GetFont(TextStyle::Body);
+        CFont* oldFont = pDC->SelectObject(pFont);
+        pDC->SetBkMode(TRANSPARENT);
+        pDC->SetTextColor(textColor);
+        pDC->DrawText(hexText, textRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+        pDC->SelectObject(oldFont);
     }
 
     void CMColorPicker::DrawColorPreview(CDC* pDC, const CRect& rect)

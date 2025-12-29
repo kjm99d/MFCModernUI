@@ -69,7 +69,6 @@ namespace MFCModernUI
         void ApplyVariant();
 
         // Direct2D
-        void OnDrawGdiPlus(CDC* pDC);
         void DrawShadowD2D(const CRect& rect);
     };
 }

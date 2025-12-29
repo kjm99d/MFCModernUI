@@ -440,7 +440,13 @@ namespace MFCModernUI
                 CRect selRect = nodeRect;
                 selRect.left = x;
                 selRect.DeflateRect(2, 1);
-                DrawRoundedRect(pDC, selRect, 4, colors.primary.normal);
+                CBrush brush(colors.primary.normal);
+                CPen pen(PS_SOLID, 1, colors.primary.normal);
+                CPen* pOldPen = pDC->SelectObject(&pen);
+                CBrush* pOldBrush = pDC->SelectObject(&brush);
+                pDC->RoundRect(selRect, CPoint(4, 4));
+                pDC->SelectObject(pOldPen);
+                pDC->SelectObject(pOldBrush);
             }
 
             // 연결선

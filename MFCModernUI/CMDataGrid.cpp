@@ -470,62 +470,80 @@ namespace MFCModernUI
 
     void CMDataGrid::OnDraw(CDC* pDC)
     {
+        if (!BeginD2DDraw())
+            return;
+
         CRect rect;
         GetClientRect(&rect);
 
         const ThemeColors& colors = GetColors();
 
         // 배경
-        pDC->FillSolidRect(rect, colors.surface.normal);
+        D2D1_RECT_F bgRect = D2D1::RectF(
+            (float)rect.left, (float)rect.top,
+            (float)rect.right, (float)rect.bottom);
+        m_pSolidBrush->SetColor(ToD2DColor(colors.surface.normal));
+        m_pRenderTarget->FillRectangle(bgRect, m_pSolidBrush);
 
         // 테두리
-        CPen pen(PS_SOLID, m_isFocused ? 2 : 1,
-            m_isFocused ? colors.primary.normal : colors.border.normal);
-        CPen* oldPen = pDC->SelectObject(&pen);
-        CBrush* oldBrush = (CBrush*)pDC->SelectStockObject(NULL_BRUSH);
-        pDC->Rectangle(rect);
-        pDC->SelectObject(oldPen);
-        pDC->SelectObject(oldBrush);
+        float borderWidth = m_isFocused ? 2.0f : 1.0f;
+        COLORREF borderColor = m_isFocused ? colors.primary.normal : colors.border.normal;
+        m_pSolidBrush->SetColor(ToD2DColor(borderColor));
+        D2D1_RECT_F borderRect = D2D1::RectF(
+            rect.left + borderWidth / 2, rect.top + borderWidth / 2,
+            rect.right - borderWidth / 2, rect.bottom - borderWidth / 2);
+        m_pRenderTarget->DrawRectangle(borderRect, m_pSolidBrush, borderWidth);
 
-        // 클리핑
+        // 클리핑 영역 설정
         CRect clipRect = rect;
         clipRect.DeflateRect(1, 1);
-        pDC->IntersectClipRect(clipRect);
+        D2D1_RECT_F clipRectF = D2D1::RectF(
+            (float)clipRect.left, (float)clipRect.top,
+            (float)clipRect.right, (float)clipRect.bottom);
+        m_pRenderTarget->PushAxisAlignedClip(clipRectF, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
 
         // 헤더
         if (m_showHeader)
         {
             CRect headerRect = rect;
             headerRect.bottom = headerRect.top + m_headerHeight;
-            DrawHeader(pDC, headerRect);
+            DrawHeader(headerRect);
         }
 
         // 행들
         CRect rowsRect = rect;
         if (m_showHeader)
             rowsRect.top += m_headerHeight;
-        DrawRows(pDC, rowsRect);
+        DrawRows(rowsRect);
+
+        // 클리핑 해제
+        m_pRenderTarget->PopAxisAlignedClip();
+
+        EndD2DDraw();
     }
 
-    void CMDataGrid::DrawHeader(CDC* pDC, const CRect& rect)
+    void CMDataGrid::DrawHeader(const CRect& rect)
     {
         const ThemeColors& colors = GetColors();
 
         // 헤더 배경
-        pDC->FillSolidRect(rect, colors.surface.hover);
+        D2D1_RECT_F headerBg = D2D1::RectF(
+            (float)rect.left, (float)rect.top,
+            (float)rect.right, (float)rect.bottom);
+        m_pSolidBrush->SetColor(ToD2DColor(colors.surface.hover));
+        m_pRenderTarget->FillRectangle(headerBg, m_pSolidBrush);
 
         // 하단 라인
-        CPen pen(PS_SOLID, 1, colors.border.normal);
-        CPen* oldPen = pDC->SelectObject(&pen);
-        pDC->MoveTo(rect.left, rect.bottom - 1);
-        pDC->LineTo(rect.right, rect.bottom - 1);
-        pDC->SelectObject(oldPen);
+        m_pSolidBrush->SetColor(ToD2DColor(colors.border.normal));
+        m_pRenderTarget->DrawLine(
+            D2D1::Point2F((float)rect.left, (float)(rect.bottom - 1)),
+            D2D1::Point2F((float)rect.right, (float)(rect.bottom - 1)),
+            m_pSolidBrush, 1.0f);
 
-        // 각 컬럼 헤더
-        CFont* pFont = CMThemeManager::GetInstance().GetFont(TextStyle::BodyBold);
-        CFont* oldFont = pDC->SelectObject(pFont);
-        pDC->SetBkMode(TRANSPARENT);
-        pDC->SetTextColor(colors.text);
+        // 텍스트 포맷
+        IDWriteTextFormat* pTextFormat = GetTextFormat(TextStyle::BodyBold);
+        if (!pTextFormat)
+            return;
 
         int x = -m_scrollX;
         for (INT_PTR i = 0; i < m_columns.GetSize(); i++)
@@ -543,8 +561,21 @@ namespace MFCModernUI
                 textRect.right -= 16;
             }
 
-            pDC->DrawText(col.header, textRect,
-                col.textAlign | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+            // 텍스트 정렬 설정
+            if (col.textAlign == DT_CENTER)
+                pTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+            else if (col.textAlign == DT_RIGHT)
+                pTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING);
+            else
+                pTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+            pTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+
+            D2D1_RECT_F textRectF = D2D1::RectF(
+                (float)textRect.left, (float)textRect.top,
+                (float)textRect.right, (float)textRect.bottom);
+            m_pSolidBrush->SetColor(ToD2DColor(colors.text));
+            m_pRenderTarget->DrawText(col.header, col.header.GetLength(),
+                pTextFormat, textRectF, m_pSolidBrush);
 
             // 정렬 표시
             if (m_sortColumn == i && m_sortOrder != ColumnSortOrder::None)
@@ -552,32 +583,26 @@ namespace MFCModernUI
                 CRect sortRect = colRect;
                 sortRect.left = sortRect.right - 20;
                 sortRect.DeflateRect(4, 0);
-                DrawSortIndicator(pDC, sortRect, m_sortOrder);
+                DrawSortIndicator(sortRect, m_sortOrder);
             }
 
             // 수직 구분선
             if (m_showGridLines && i < m_columns.GetSize() - 1)
             {
-                CPen linePen(PS_SOLID, 1, colors.border.normal);
-                oldPen = pDC->SelectObject(&linePen);
-                pDC->MoveTo(colRect.right - 1, rect.top);
-                pDC->LineTo(colRect.right - 1, rect.bottom);
-                pDC->SelectObject(oldPen);
+                m_pSolidBrush->SetColor(ToD2DColor(colors.border.normal));
+                m_pRenderTarget->DrawLine(
+                    D2D1::Point2F((float)(colRect.right - 1), (float)rect.top),
+                    D2D1::Point2F((float)(colRect.right - 1), (float)rect.bottom),
+                    m_pSolidBrush, 1.0f);
             }
 
             x += col.width;
         }
-
-        pDC->SelectObject(oldFont);
     }
 
-    void CMDataGrid::DrawRows(CDC* pDC, const CRect& rect)
+    void CMDataGrid::DrawRows(const CRect& rect)
     {
         const ThemeColors& colors = GetColors();
-
-        CFont* pFont = CMThemeManager::GetInstance().GetFont(TextStyle::Body);
-        CFont* oldFont = pDC->SelectObject(pFont);
-        pDC->SetBkMode(TRANSPARENT);
 
         int y = rect.top - m_scrollY;
         for (INT_PTR row = 0; row < m_rows.GetSize(); row++)
@@ -604,34 +629,36 @@ namespace MFCModernUI
                 rowBg = colors.surface.hover;
             }
 
-            pDC->FillSolidRect(rowRect, rowBg);
+            D2D1_RECT_F rowBgRect = D2D1::RectF(
+                (float)rowRect.left, (float)rowRect.top,
+                (float)rowRect.right, (float)rowRect.bottom);
+            m_pSolidBrush->SetColor(ToD2DColor(rowBg));
+            m_pRenderTarget->FillRectangle(rowBgRect, m_pSolidBrush);
 
             // 각 셀
             int x = -m_scrollX;
             for (INT_PTR col = 0; col < m_columns.GetSize(); col++)
             {
                 CRect cellRect(x, y, x + m_columns[col].width, y + m_rowHeight);
-                DrawCell(pDC, (int)row, (int)col, cellRect);
+                DrawCell((int)row, (int)col, cellRect);
                 x += m_columns[col].width;
             }
 
             // 행 하단 라인
             if (m_showGridLines)
             {
-                CPen linePen(PS_SOLID, 1, colors.border.normal);
-                CPen* oldPen = pDC->SelectObject(&linePen);
-                pDC->MoveTo(rect.left, y + m_rowHeight - 1);
-                pDC->LineTo(rect.right, y + m_rowHeight - 1);
-                pDC->SelectObject(oldPen);
+                m_pSolidBrush->SetColor(ToD2DColor(colors.border.normal));
+                m_pRenderTarget->DrawLine(
+                    D2D1::Point2F((float)rect.left, (float)(y + m_rowHeight - 1)),
+                    D2D1::Point2F((float)rect.right, (float)(y + m_rowHeight - 1)),
+                    m_pSolidBrush, 1.0f);
             }
 
             y += m_rowHeight;
         }
-
-        pDC->SelectObject(oldFont);
     }
 
-    void CMDataGrid::DrawCell(CDC* pDC, int row, int col, const CRect& rect)
+    void CMDataGrid::DrawCell(int row, int col, const CRect& rect)
     {
         if (row < 0 || row >= m_rows.GetSize())
             return;
@@ -657,8 +684,6 @@ namespace MFCModernUI
             textColor = colors.text;
         }
 
-        pDC->SetTextColor(textColor);
-
         CRect contentRect = rect;
         contentRect.DeflateRect(8, 0);
 
@@ -668,87 +693,124 @@ namespace MFCModernUI
         {
             // 체크박스
             int checkSize = 16;
-            CRect checkRect(
-                contentRect.left,
-                rect.CenterPoint().y - checkSize / 2,
-                contentRect.left + checkSize,
-                rect.CenterPoint().y + checkSize / 2
-            );
+            float cx = (float)contentRect.left + checkSize / 2.0f;
+            float cy = (float)rect.CenterPoint().y;
+            float halfSize = checkSize / 2.0f;
 
-            CPen pen(PS_SOLID, 1, colors.border.normal);
-            CPen* oldPen = pDC->SelectObject(&pen);
-            CBrush* oldBrush = (CBrush*)pDC->SelectStockObject(NULL_BRUSH);
-            pDC->RoundRect(checkRect, CPoint(3, 3));
-            pDC->SelectObject(oldPen);
-            pDC->SelectObject(oldBrush);
+            D2D1_ROUNDED_RECT checkRect = D2D1::RoundedRect(
+                D2D1::RectF(cx - halfSize, cy - halfSize, cx + halfSize, cy + halfSize),
+                3.0f, 3.0f);
+
+            m_pSolidBrush->SetColor(ToD2DColor(colors.border.normal));
+            m_pRenderTarget->DrawRoundedRectangle(checkRect, m_pSolidBrush, 1.0f);
 
             if (cell.checked)
             {
-                CPen checkPen(PS_SOLID, 2, colors.primary.normal);
-                oldPen = pDC->SelectObject(&checkPen);
-                int cx = checkRect.CenterPoint().x;
-                int cy = checkRect.CenterPoint().y;
-                pDC->MoveTo(cx - 3, cy);
-                pDC->LineTo(cx - 1, cy + 3);
-                pDC->LineTo(cx + 4, cy - 2);
-                pDC->SelectObject(oldPen);
+                m_pSolidBrush->SetColor(ToD2DColor(colors.primary.normal));
+                // 체크마크 그리기
+                m_pRenderTarget->DrawLine(
+                    D2D1::Point2F(cx - 3, cy),
+                    D2D1::Point2F(cx - 1, cy + 3),
+                    m_pSolidBrush, 2.0f);
+                m_pRenderTarget->DrawLine(
+                    D2D1::Point2F(cx - 1, cy + 3),
+                    D2D1::Point2F(cx + 4, cy - 2),
+                    m_pSolidBrush, 2.0f);
             }
             break;
         }
 
         case CellType::Number:
+        {
             contentRect.right -= 4;
-            pDC->DrawText(cell.text, contentRect,
-                DT_RIGHT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+            IDWriteTextFormat* pTextFormat = GetTextFormat(TextStyle::Body);
+            if (pTextFormat)
+            {
+                pTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING);
+                pTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+
+                D2D1_RECT_F textRectF = D2D1::RectF(
+                    (float)contentRect.left, (float)contentRect.top,
+                    (float)contentRect.right, (float)contentRect.bottom);
+                m_pSolidBrush->SetColor(ToD2DColor(textColor));
+                m_pRenderTarget->DrawText(cell.text, cell.text.GetLength(),
+                    pTextFormat, textRectF, m_pSolidBrush);
+            }
             break;
+        }
 
         case CellType::Text:
         default:
-            pDC->DrawText(cell.text, contentRect,
-                column.textAlign | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+        {
+            IDWriteTextFormat* pTextFormat = GetTextFormat(TextStyle::Body);
+            if (pTextFormat)
+            {
+                if (column.textAlign == DT_CENTER)
+                    pTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+                else if (column.textAlign == DT_RIGHT)
+                    pTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING);
+                else
+                    pTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+                pTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+
+                D2D1_RECT_F textRectF = D2D1::RectF(
+                    (float)contentRect.left, (float)contentRect.top,
+                    (float)contentRect.right, (float)contentRect.bottom);
+                m_pSolidBrush->SetColor(ToD2DColor(textColor));
+                m_pRenderTarget->DrawText(cell.text, cell.text.GetLength(),
+                    pTextFormat, textRectF, m_pSolidBrush);
+            }
             break;
+        }
         }
 
         // 수직 구분선
         if (m_showGridLines && col < m_columns.GetSize() - 1)
         {
-            CPen linePen(PS_SOLID, 1, colors.border.normal);
-            CPen* oldPen = pDC->SelectObject(&linePen);
-            pDC->MoveTo(rect.right - 1, rect.top);
-            pDC->LineTo(rect.right - 1, rect.bottom);
-            pDC->SelectObject(oldPen);
+            m_pSolidBrush->SetColor(ToD2DColor(colors.border.normal));
+            m_pRenderTarget->DrawLine(
+                D2D1::Point2F((float)(rect.right - 1), (float)rect.top),
+                D2D1::Point2F((float)(rect.right - 1), (float)rect.bottom),
+                m_pSolidBrush, 1.0f);
         }
     }
 
-    void CMDataGrid::DrawSortIndicator(CDC* pDC, const CRect& rect, ColumnSortOrder order)
+    void CMDataGrid::DrawSortIndicator(const CRect& rect, ColumnSortOrder order)
     {
         const ThemeColors& colors = GetColors();
 
-        int cx = rect.CenterPoint().x;
-        int cy = rect.CenterPoint().y;
-        int size = 4;
+        float cx = (float)rect.CenterPoint().x;
+        float cy = (float)rect.CenterPoint().y;
+        float size = 4.0f;
 
-        POINT points[3];
-        if (order == ColumnSortOrder::Ascending)
+        // 삼각형 경로 생성
+        ID2D1PathGeometry* pPathGeometry = nullptr;
+        if (SUCCEEDED(s_pD2DFactory->CreatePathGeometry(&pPathGeometry)))
         {
-            points[0] = { cx, cy - size };
-            points[1] = { cx - size, cy + size / 2 };
-            points[2] = { cx + size, cy + size / 2 };
-        }
-        else
-        {
-            points[0] = { cx, cy + size };
-            points[1] = { cx - size, cy - size / 2 };
-            points[2] = { cx + size, cy - size / 2 };
-        }
+            ID2D1GeometrySink* pSink = nullptr;
+            if (SUCCEEDED(pPathGeometry->Open(&pSink)))
+            {
+                if (order == ColumnSortOrder::Ascending)
+                {
+                    pSink->BeginFigure(D2D1::Point2F(cx, cy - size), D2D1_FIGURE_BEGIN_FILLED);
+                    pSink->AddLine(D2D1::Point2F(cx - size, cy + size / 2));
+                    pSink->AddLine(D2D1::Point2F(cx + size, cy + size / 2));
+                }
+                else
+                {
+                    pSink->BeginFigure(D2D1::Point2F(cx, cy + size), D2D1_FIGURE_BEGIN_FILLED);
+                    pSink->AddLine(D2D1::Point2F(cx - size, cy - size / 2));
+                    pSink->AddLine(D2D1::Point2F(cx + size, cy - size / 2));
+                }
+                pSink->EndFigure(D2D1_FIGURE_END_CLOSED);
+                pSink->Close();
+                pSink->Release();
 
-        CBrush brush(colors.textSecondary);
-        CPen pen(PS_SOLID, 1, colors.textSecondary);
-        CPen* oldPen = pDC->SelectObject(&pen);
-        CBrush* oldBrush = pDC->SelectObject(&brush);
-        pDC->Polygon(points, 3);
-        pDC->SelectObject(oldPen);
-        pDC->SelectObject(oldBrush);
+                m_pSolidBrush->SetColor(ToD2DColor(colors.textSecondary));
+                m_pRenderTarget->FillGeometry(pPathGeometry, m_pSolidBrush);
+            }
+            pPathGeometry->Release();
+        }
     }
 
     int CMDataGrid::GetColumnX(int col)

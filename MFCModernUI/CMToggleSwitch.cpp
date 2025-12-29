@@ -124,10 +124,7 @@ namespace MFCModernUI
     {
         // Direct2D 렌더링 시작
         if (!BeginD2DDraw())
-        {
-            OnDrawGdiPlus(pDC);
             return;
-        }
 
         CRect rect;
         GetClientRect(&rect);
@@ -159,101 +156,6 @@ namespace MFCModernUI
         }
 
         EndD2DDraw();
-    }
-
-    void CMToggleSwitch::OnDrawGdiPlus(CDC* pDC)
-    {
-        CRect rect;
-        GetClientRect(&rect);
-
-        const ThemeColors& colors = GetColors();
-
-        pDC->FillSolidRect(rect, colors.surface.normal);
-
-        CRect trackRect;
-        trackRect.left = rect.left;
-        trackRect.top = rect.top + (rect.Height() - TRACK_HEIGHT) / 2;
-        trackRect.right = trackRect.left + TRACK_WIDTH;
-        trackRect.bottom = trackRect.top + TRACK_HEIGHT;
-
-        DrawTrack(pDC, trackRect);
-        DrawKnob(pDC, trackRect);
-
-        if (!m_text.IsEmpty())
-        {
-            CRect textRect = rect;
-            textRect.left = trackRect.right + 8;
-
-            COLORREF textColor = m_enabled ? colors.text : colors.textDisabled;
-            DrawText(pDC, m_text, textRect, textColor, TextStyle::Body,
-                DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-        }
-    }
-
-    void CMToggleSwitch::DrawTrack(CDC* pDC, const CRect& trackRect)
-    {
-        const ThemeColors& colors = GetColors();
-        int radius = TRACK_HEIGHT / 2;
-
-        // 트랙 배경색 (애니메이션으로 보간)
-        COLORREF offColor, onColor, trackColor;
-
-        if (!m_enabled)
-        {
-            trackColor = colors.surface.disabled;
-        }
-        else
-        {
-            // Off 상태는 회색 배경으로 명확하게 표시
-            switch (m_state)
-            {
-            case ControlState::Hover:
-                offColor = colors.border.hover;  // 호버시 약간 더 진한 회색
-                onColor = colors.primary.hover;
-                break;
-            default:
-                offColor = colors.border.normal;  // 기본 회색 배경 (테두리 색상 사용)
-                onColor = colors.primary.normal;
-                break;
-            }
-
-            trackColor = CMAnimationManager::InterpolateColor(offColor, onColor, m_knobPosition);
-        }
-
-        // GDI+로 안티앨리어싱된 둥근 사각형 그리기
-        DrawRoundedRectGdiPlus(pDC, trackRect, radius, trackColor);
-    }
-
-    void CMToggleSwitch::DrawKnob(CDC* pDC, const CRect& trackRect)
-    {
-        const ThemeColors& colors = GetColors();
-
-        // 노브 위치 계산
-        int minX = trackRect.left + KNOB_MARGIN;
-        int maxX = trackRect.right - KNOB_MARGIN - KNOB_SIZE;
-        int knobX = minX + static_cast<int>((maxX - minX) * m_knobPosition);
-        int knobY = trackRect.top + KNOB_MARGIN;
-
-        CRect knobRect(knobX, knobY, knobX + KNOB_SIZE, knobY + KNOB_SIZE);
-
-        // 노브 색상 - 항상 흰색 계열로 해서 트랙 위에서 잘 보이게
-        COLORREF knobColor = m_enabled ? RGB(255, 255, 255) : RGB(200, 200, 200);
-
-        // GDI+로 안티앨리어싱된 그림자 효과 (반투명)
-        Gdiplus::Graphics graphics(pDC->GetSafeHdc());
-        graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-
-        // 그림자 (반투명 검정)
-        CRect shadowRect = knobRect;
-        shadowRect.OffsetRect(0, 1);
-        Gdiplus::SolidBrush shadowBrush(Gdiplus::Color(40, 0, 0, 0));
-        graphics.FillEllipse(&shadowBrush,
-            shadowRect.left, shadowRect.top, shadowRect.Width(), shadowRect.Height());
-
-        // 노브 (GDI+로 원 그리기)
-        DrawCircleGdiPlus(pDC, knobRect, knobColor,
-            m_enabled ? CLR_INVALID : colors.border.disabled,
-            m_enabled ? 0 : 1);
     }
 
     void CMToggleSwitch::DrawTrackD2D(const CRect& trackRect)

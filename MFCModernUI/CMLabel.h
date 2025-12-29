@@ -62,8 +62,5 @@ namespace MFCModernUI
         BOOL m_ellipsis;
         BOOL m_selectable;
         BOOL m_wordWrap;
-
-        // Direct2D
-        void OnDrawGdiPlus(CDC* pDC);
     };
 }

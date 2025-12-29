@@ -142,10 +142,7 @@ namespace MFCModernUI
     {
         // Direct2D 렌더링 시작
         if (!BeginD2DDraw())
-        {
-            OnDrawGdiPlus(pDC);
             return;
-        }
 
         CRect rect;
         GetClientRect(&rect);
@@ -173,30 +170,6 @@ namespace MFCModernUI
         DrawRoundedRectD2D(rect, radius, bgColor, borderColor, m_borderWidth);
 
         EndD2DDraw();
-    }
-
-    void CMPanel::OnDrawGdiPlus(CDC* pDC)
-    {
-        CRect rect;
-        GetClientRect(&rect);
-
-        const ThemeColors& colors = GetColors();
-        int radius = (m_cornerRadius >= 0) ? m_cornerRadius : GetThemeManager().GetCornerRadius();
-
-        if (m_shadowLevel != ShadowLevel::None)
-        {
-            DrawShadow(pDC, rect);
-        }
-
-        COLORREF bgColor = m_useDefaultBgColor ? colors.surface.normal : m_backgroundColor;
-
-        COLORREF borderColor = CLR_INVALID;
-        if (m_borderWidth > 0)
-        {
-            borderColor = m_borderColor;
-        }
-
-        DrawRoundedRect(pDC, rect, radius, bgColor, borderColor, m_borderWidth);
     }
 
     void CMPanel::DrawShadowD2D(const CRect& rect)
@@ -258,68 +231,6 @@ namespace MFCModernUI
             );
 
             m_pRenderTarget->FillRoundedRectangle(roundedRect, m_pSolidBrush);
-        }
-    }
-
-    void CMPanel::DrawShadow(CDC* pDC, const CRect& rect)
-    {
-        // 그림자 파라미터
-        int offsetY = 0;
-        int blur = 0;
-        int spread = 0;
-        BYTE alpha = 0;
-
-        switch (m_shadowLevel)
-        {
-        case ShadowLevel::Small:
-            offsetY = 1;
-            blur = 2;
-            spread = 0;
-            alpha = 20;
-            break;
-        case ShadowLevel::Medium:
-            offsetY = 4;
-            blur = 6;
-            spread = -1;
-            alpha = 30;
-            break;
-        case ShadowLevel::Large:
-            offsetY = 10;
-            blur = 15;
-            spread = -3;
-            alpha = 40;
-            break;
-        default:
-            return;
-        }
-
-        int radius = (m_cornerRadius >= 0) ? m_cornerRadius : GetThemeManager().GetCornerRadius();
-
-        // 간단한 그림자 시뮬레이션 (여러 레이어)
-        for (int i = blur; i >= 1; i -= 2)
-        {
-            BYTE currentAlpha = static_cast<BYTE>(alpha * (blur - i + 1) / blur);
-            COLORREF shadowColor = RGB(0, 0, 0);
-
-            // 그림자 영역
-            CRect shadowRect = rect;
-            shadowRect.OffsetRect(0, offsetY);
-            shadowRect.InflateRect(i + spread, i + spread);
-
-            // 반투명 그림자 (단순화된 버전)
-            int grayLevel = 255 - currentAlpha;
-            COLORREF grayColor = RGB(grayLevel, grayLevel, grayLevel);
-
-            CPen pen(PS_NULL, 0, RGB(0, 0, 0));
-            CBrush brush(grayColor);
-
-            CPen* pOldPen = pDC->SelectObject(&pen);
-            CBrush* pOldBrush = pDC->SelectObject(&brush);
-
-            pDC->RoundRect(shadowRect, CPoint(radius + i, radius + i));
-
-            pDC->SelectObject(pOldPen);
-            pDC->SelectObject(pOldBrush);
         }
     }
 }

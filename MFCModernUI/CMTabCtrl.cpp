@@ -333,10 +333,7 @@ namespace MFCModernUI
     {
         // Direct2D 렌더링 시작
         if (!BeginD2DDraw())
-        {
-            OnDrawGdiPlus(pDC);
             return;
-        }
 
         CRect rect;
         GetClientRect(&rect);
@@ -366,7 +363,7 @@ namespace MFCModernUI
             (float)tabAreaRect.left, (float)tabAreaRect.top,
             (float)tabAreaRect.right, (float)tabAreaRect.bottom
         );
-        m_pSolidBrush->SetColor(ToD2DColor(colors.surface.hover));
+        m_pSolidBrush->SetColor(ToD2DColor(colors.background.normal));
         m_pRenderTarget->FillRectangle(tabAreaD2D, m_pSolidBrush);
 
         // 구분선
@@ -401,210 +398,6 @@ namespace MFCModernUI
         }
 
         EndD2DDraw();
-    }
-
-    void CMTabCtrl::OnDrawGdiPlus(CDC* pDC)
-    {
-        CRect rect;
-        GetClientRect(&rect);
-
-        const ThemeColors& colors = GetColors();
-
-        // 배경
-        pDC->FillSolidRect(rect, colors.surface.normal);
-
-        // 탭 영역 배경
-        CRect tabAreaRect = rect;
-        if (m_tabPosition == Position::Top)
-        {
-            tabAreaRect.bottom = TAB_HEIGHT;
-        }
-        else if (m_tabPosition == Position::Bottom)
-        {
-            tabAreaRect.top = rect.Height() - TAB_HEIGHT;
-        }
-
-        pDC->FillSolidRect(tabAreaRect, colors.surface.hover);
-
-        // 구분선
-        CPen pen(PS_SOLID, 1, colors.border.normal);
-        CPen* pOldPen = pDC->SelectObject(&pen);
-
-        if (m_tabPosition == Position::Top)
-        {
-            pDC->MoveTo(rect.left, TAB_HEIGHT - 1);
-            pDC->LineTo(rect.right, TAB_HEIGHT - 1);
-        }
-        else if (m_tabPosition == Position::Bottom)
-        {
-            pDC->MoveTo(rect.left, rect.Height() - TAB_HEIGHT);
-            pDC->LineTo(rect.right, rect.Height() - TAB_HEIGHT);
-        }
-
-        pDC->SelectObject(pOldPen);
-
-        // 탭 그리기
-        for (int i = 0; i < static_cast<int>(m_tabs.size()); i++)
-        {
-            CRect tabRect = GetTabRect(i);
-
-            // 화면에 보이는 탭만 그리기
-            if (tabRect.right > 0 && tabRect.left < rect.Width())
-            {
-                DrawTab(pDC, i, tabRect);
-            }
-        }
-    }
-
-    void CMTabCtrl::DrawTab(CDC* pDC, int index, const CRect& tabRect)
-    {
-        const ThemeColors& colors = GetColors();
-        const TabItem& tab = m_tabs[index];
-
-        BOOL isSelected = (index == m_selectedIndex);
-        BOOL isHover = (index == m_hoverIndex);
-        BOOL isDisabled = tab.disabled;
-
-        // 탭 배경
-        COLORREF bgColor;
-        if (isDisabled)
-        {
-            bgColor = colors.surface.disabled;
-        }
-        else if (isSelected)
-        {
-            bgColor = colors.surface.normal;
-        }
-        else if (isHover)
-        {
-            bgColor = colors.surface.pressed;
-        }
-        else
-        {
-            bgColor = colors.surface.hover;
-        }
-
-        CRect bgRect = tabRect;
-        if (m_tabPosition == Position::Top && isSelected)
-        {
-            bgRect.bottom += 1;  // 구분선 가리기
-        }
-
-        pDC->FillSolidRect(bgRect, bgColor);
-
-        // 선택 표시 (하단 또는 상단 바)
-        if (isSelected)
-        {
-            CRect indicatorRect = tabRect;
-            if (m_tabPosition == Position::Top)
-            {
-                indicatorRect.top = indicatorRect.bottom - 3;
-            }
-            else
-            {
-                indicatorRect.bottom = indicatorRect.top + 3;
-            }
-            pDC->FillSolidRect(indicatorRect, colors.primary.normal);
-        }
-
-        // 텍스트
-        CRect textRect = tabRect;
-        textRect.DeflateRect(TAB_PADDING, 0);
-
-        if (tab.closable || m_showCloseButton)
-        {
-            textRect.right -= CLOSE_BUTTON_SIZE + 8;
-        }
-
-        COLORREF textColor;
-        if (isDisabled)
-        {
-            textColor = colors.textDisabled;
-        }
-        else if (isSelected)
-        {
-            textColor = colors.primary.normal;
-        }
-        else
-        {
-            textColor = colors.text;
-        }
-
-        DrawText(pDC, tab.text, textRect, textColor, TextStyle::Body,
-            DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
-
-        // 닫기 버튼
-        if ((tab.closable || m_showCloseButton) && !isDisabled)
-        {
-            CRect closeRect(
-                tabRect.right - CLOSE_BUTTON_SIZE - 8,
-                tabRect.top + (TAB_HEIGHT - CLOSE_BUTTON_SIZE) / 2,
-                tabRect.right - 8,
-                tabRect.top + (TAB_HEIGHT + CLOSE_BUTTON_SIZE) / 2
-            );
-
-            DrawCloseButton(pDC, closeRect, index == m_hoverCloseIndex);
-        }
-
-        // 배지
-        if (!tab.badge.IsEmpty())
-        {
-            DrawBadge(pDC, tabRect, tab.badge);
-        }
-    }
-
-    void CMTabCtrl::DrawCloseButton(CDC* pDC, const CRect& rect, BOOL hover)
-    {
-        const ThemeColors& colors = GetColors();
-
-        if (hover)
-        {
-            // 호버 배경
-            CBrush brush(colors.surface.pressed);
-            CPen nullPen(PS_NULL, 0, RGB(0, 0, 0));
-            pDC->SelectObject(&brush);
-            pDC->SelectObject(&nullPen);
-            pDC->Ellipse(rect);
-        }
-
-        // X 아이콘
-        COLORREF iconColor = hover ? colors.danger.normal : colors.textSecondary;
-        CPen pen(PS_SOLID, 1, iconColor);
-        CPen* pOldPen = pDC->SelectObject(&pen);
-
-        int cx = rect.CenterPoint().x;
-        int cy = rect.CenterPoint().y;
-        int size = 4;
-
-        pDC->MoveTo(cx - size, cy - size);
-        pDC->LineTo(cx + size + 1, cy + size + 1);
-        pDC->MoveTo(cx + size, cy - size);
-        pDC->LineTo(cx - size - 1, cy + size + 1);
-
-        pDC->SelectObject(pOldPen);
-    }
-
-    void CMTabCtrl::DrawBadge(CDC* pDC, const CRect& tabRect, const CString& badge)
-    {
-        const ThemeColors& colors = GetColors();
-
-        CRect badgeRect(
-            tabRect.right - 28,
-            tabRect.top + 8,
-            tabRect.right - 8,
-            tabRect.top + 22
-        );
-
-        // 배지 배경
-        CBrush brush(colors.danger.normal);
-        CPen nullPen(PS_NULL, 0, RGB(0, 0, 0));
-        pDC->SelectObject(&brush);
-        pDC->SelectObject(&nullPen);
-        pDC->RoundRect(badgeRect, CPoint(7, 7));
-
-        // 배지 텍스트
-        DrawText(pDC, badge, badgeRect, colors.textOnPrimary, TextStyle::Caption,
-            DT_CENTER | DT_VCENTER | DT_SINGLELINE);
     }
 
     void CMTabCtrl::OnLButtonDown(UINT nFlags, CPoint point)
@@ -677,11 +470,11 @@ namespace MFCModernUI
         }
         else if (isHover)
         {
-            bgColor = colors.surface.pressed;
+            bgColor = colors.surface.hover;
         }
         else
         {
-            bgColor = colors.surface.hover;
+            bgColor = colors.background.normal;
         }
 
         CRect bgRect = tabRect;

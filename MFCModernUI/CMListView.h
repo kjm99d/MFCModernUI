@@ -153,7 +153,6 @@ namespace MFCModernUI
         CRect GetItemRect(int index);
 
         // Direct2D
-        void OnDrawGdiPlus(CDC* pDC);
         void DrawHeaderD2D(const CRect& rect);
         void DrawItemsD2D(const CRect& rect);
         void DrawItemD2D(int index, const CRect& itemRect);

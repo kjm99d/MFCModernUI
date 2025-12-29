@@ -83,7 +83,6 @@ namespace MFCModernUI
         void StartSelectionAnimation();
 
         // Direct2D
-        void OnDrawGdiPlus(CDC* pDC);
         void DrawRadioButtonD2D(const CRect& circleRect);
 
         friend class CMRadioGroup;

@@ -173,232 +173,11 @@ namespace MFCModernUI
         }
     }
 
-    void CMControlBase::DrawRoundedRect(CDC* pDC, const CRect& rect, int radius,
-        COLORREF fillColor, COLORREF borderColor, int borderWidth)
-    {
-        // GDI+를 사용하지 않고 순수 GDI로 둥근 사각형 그리기
-        CPen pen;
-        CBrush brush;
-
-        if (borderColor != CLR_INVALID && borderWidth > 0)
-        {
-            pen.CreatePen(PS_SOLID, borderWidth, borderColor);
-        }
-        else
-        {
-            pen.CreatePen(PS_NULL, 0, RGB(0, 0, 0));
-        }
-
-        brush.CreateSolidBrush(fillColor);
-
-        CPen* pOldPen = pDC->SelectObject(&pen);
-        CBrush* pOldBrush = pDC->SelectObject(&brush);
-
-        pDC->RoundRect(rect, CPoint(radius * 2, radius * 2));
-
-        pDC->SelectObject(pOldPen);
-        pDC->SelectObject(pOldBrush);
-    }
-
-    void CMControlBase::DrawText(CDC* pDC, const CString& text, const CRect& rect,
-        COLORREF color, TextStyle style, UINT format)
-    {
-        CFont* pFont = GetThemeManager().GetFont(style);
-        CFont* pOldFont = pDC->SelectObject(pFont);
-        COLORREF oldColor = pDC->SetTextColor(color);
-        int oldBkMode = pDC->SetBkMode(TRANSPARENT);
-
-        CRect textRect = rect;
-        pDC->DrawText(text, &textRect, format);
-
-        pDC->SetBkMode(oldBkMode);
-        pDC->SetTextColor(oldColor);
-        pDC->SelectObject(pOldFont);
-    }
-
-    // GDI+ 헬퍼 함수들
-    Gdiplus::Color CMControlBase::ToGdiplusColor(COLORREF color, BYTE alpha)
-    {
-        return Gdiplus::Color(alpha, GetRValue(color), GetGValue(color), GetBValue(color));
-    }
-
-    void CMControlBase::CreateRoundedRectPath(Gdiplus::GraphicsPath& path, const Gdiplus::RectF& rect, float radius)
-    {
-        path.Reset();
-
-        if (radius <= 0)
-        {
-            path.AddRectangle(rect);
-            return;
-        }
-
-        float diameter = radius * 2.0f;
-
-        // 왼쪽 상단 모서리
-        path.AddArc(rect.X, rect.Y, diameter, diameter, 180.0f, 90.0f);
-        // 오른쪽 상단 모서리
-        path.AddArc(rect.X + rect.Width - diameter, rect.Y, diameter, diameter, 270.0f, 90.0f);
-        // 오른쪽 하단 모서리
-        path.AddArc(rect.X + rect.Width - diameter, rect.Y + rect.Height - diameter, diameter, diameter, 0.0f, 90.0f);
-        // 왼쪽 하단 모서리
-        path.AddArc(rect.X, rect.Y + rect.Height - diameter, diameter, diameter, 90.0f, 90.0f);
-
-        path.CloseFigure();
-    }
-
-    void CMControlBase::DrawRoundedRectGdiPlus(CDC* pDC, const CRect& rect, int radius,
-        COLORREF fillColor, COLORREF borderColor, int borderWidth)
-    {
-        Gdiplus::Graphics graphics(pDC->GetSafeHdc());
-        graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-        graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);
-
-        Gdiplus::RectF gdipRect(
-            static_cast<Gdiplus::REAL>(rect.left),
-            static_cast<Gdiplus::REAL>(rect.top),
-            static_cast<Gdiplus::REAL>(rect.Width()),
-            static_cast<Gdiplus::REAL>(rect.Height())
-        );
-
-        // 테두리가 있으면 영역 조정
-        if (borderColor != CLR_INVALID && borderWidth > 0)
-        {
-            float halfBorder = borderWidth / 2.0f;
-            gdipRect.X += halfBorder;
-            gdipRect.Y += halfBorder;
-            gdipRect.Width -= borderWidth;
-            gdipRect.Height -= borderWidth;
-        }
-
-        Gdiplus::GraphicsPath path;
-        CreateRoundedRectPath(path, gdipRect, static_cast<float>(radius));
-
-        // 채우기
-        Gdiplus::SolidBrush brush(ToGdiplusColor(fillColor));
-        graphics.FillPath(&brush, &path);
-
-        // 테두리
-        if (borderColor != CLR_INVALID && borderWidth > 0)
-        {
-            Gdiplus::Pen pen(ToGdiplusColor(borderColor), static_cast<Gdiplus::REAL>(borderWidth));
-            graphics.DrawPath(&pen, &path);
-        }
-    }
-
-    void CMControlBase::DrawCircleGdiPlus(CDC* pDC, const CRect& rect, COLORREF fillColor,
-        COLORREF borderColor, int borderWidth)
-    {
-        DrawEllipseGdiPlus(pDC, rect, fillColor, borderColor, borderWidth);
-    }
-
-    void CMControlBase::DrawEllipseGdiPlus(CDC* pDC, const CRect& rect, COLORREF fillColor,
-        COLORREF borderColor, int borderWidth)
-    {
-        Gdiplus::Graphics graphics(pDC->GetSafeHdc());
-        graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-        graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);
-
-        Gdiplus::RectF gdipRect(
-            static_cast<Gdiplus::REAL>(rect.left),
-            static_cast<Gdiplus::REAL>(rect.top),
-            static_cast<Gdiplus::REAL>(rect.Width()),
-            static_cast<Gdiplus::REAL>(rect.Height())
-        );
-
-        // 테두리가 있으면 영역 조정
-        if (borderColor != CLR_INVALID && borderWidth > 0)
-        {
-            float halfBorder = borderWidth / 2.0f;
-            gdipRect.X += halfBorder;
-            gdipRect.Y += halfBorder;
-            gdipRect.Width -= borderWidth;
-            gdipRect.Height -= borderWidth;
-        }
-
-        // 채우기
-        Gdiplus::SolidBrush brush(ToGdiplusColor(fillColor));
-        graphics.FillEllipse(&brush, gdipRect);
-
-        // 테두리
-        if (borderColor != CLR_INVALID && borderWidth > 0)
-        {
-            Gdiplus::Pen pen(ToGdiplusColor(borderColor), static_cast<Gdiplus::REAL>(borderWidth));
-            graphics.DrawEllipse(&pen, gdipRect);
-        }
-    }
-
-    void CMControlBase::DrawLineGdiPlus(CDC* pDC, int x1, int y1, int x2, int y2, COLORREF color, int width)
-    {
-        Gdiplus::Graphics graphics(pDC->GetSafeHdc());
-        graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-
-        Gdiplus::Pen pen(ToGdiplusColor(color), static_cast<Gdiplus::REAL>(width));
-        pen.SetLineCap(Gdiplus::LineCapRound, Gdiplus::LineCapRound, Gdiplus::DashCapRound);
-
-        graphics.DrawLine(&pen,
-            static_cast<Gdiplus::REAL>(x1),
-            static_cast<Gdiplus::REAL>(y1),
-            static_cast<Gdiplus::REAL>(x2),
-            static_cast<Gdiplus::REAL>(y2)
-        );
-    }
-
-    void CMControlBase::DrawTextGdiPlus(CDC* pDC, const CString& text, const CRect& rect,
-        COLORREF color, TextStyle style, UINT format)
-    {
-        Gdiplus::Graphics graphics(pDC->GetSafeHdc());
-        graphics.SetTextRenderingHint(Gdiplus::TextRenderingHintClearTypeGridFit);
-
-        // 폰트 설정
-        CFont* pFont = GetThemeManager().GetFont(style);
-        LOGFONT lf;
-        pFont->GetLogFont(&lf);
-
-        Gdiplus::Font font(pDC->GetSafeHdc(), &lf);
-
-        // 정렬 설정
-        Gdiplus::StringFormat stringFormat;
-        if (format & DT_CENTER)
-            stringFormat.SetAlignment(Gdiplus::StringAlignmentCenter);
-        else if (format & DT_RIGHT)
-            stringFormat.SetAlignment(Gdiplus::StringAlignmentFar);
-        else
-            stringFormat.SetAlignment(Gdiplus::StringAlignmentNear);
-
-        if (format & DT_VCENTER)
-            stringFormat.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-        else if (format & DT_BOTTOM)
-            stringFormat.SetLineAlignment(Gdiplus::StringAlignmentFar);
-        else
-            stringFormat.SetLineAlignment(Gdiplus::StringAlignmentNear);
-
-        if (format & DT_SINGLELINE)
-            stringFormat.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
-
-        Gdiplus::RectF layoutRect(
-            static_cast<Gdiplus::REAL>(rect.left),
-            static_cast<Gdiplus::REAL>(rect.top),
-            static_cast<Gdiplus::REAL>(rect.Width()),
-            static_cast<Gdiplus::REAL>(rect.Height())
-        );
-
-        Gdiplus::SolidBrush brush(ToGdiplusColor(color));
-        graphics.DrawString(text, -1, &font, layoutRect, &stringFormat, &brush);
-    }
-
     void CMControlBase::OnPaint()
     {
         CPaintDC dc(this);
-
-        CRect rect;
-        GetClientRect(&rect);
-
-        // Direct2D로 먼저 시도 - OnDraw 내부에서 BeginD2DDraw 호출
-        // Direct2D는 자체 렌더 타겟에 직접 그리므로 더블 버퍼링 불필요
+        // Direct2D 컨트롤은 OnDraw에서 BeginD2DDraw/EndD2DDraw 호출
         OnDraw(&dc);
-
-        // 만약 GDI+ 폴백을 사용한 경우 (OnDrawGdiPlus에서 더블 버퍼링 필요)
-        // 각 컨트롤의 OnDrawGdiPlus에서 자체적으로 더블 버퍼링 처리
     }
 
     void CMControlBase::OnMouseMove(UINT nFlags, CPoint point)
@@ -460,16 +239,19 @@ namespace MFCModernUI
         {
             ReleaseCapture();
 
-            CRect rect;
-            GetClientRect(&rect);
-
-            if (rect.PtInRect(point) && m_enabled)
+            if (m_enabled)
             {
-                SetState(ControlState::Hover);
-            }
-            else if (m_enabled)
-            {
-                SetState(ControlState::Normal);
+                // 마우스가 컨트롤 내부에 있으면 Hover, 외부면 Normal
+                CRect rect;
+                GetClientRect(&rect);
+                if (rect.PtInRect(point))
+                {
+                    SetState(ControlState::Hover);
+                }
+                else
+                {
+                    SetState(ControlState::Normal);
+                }
             }
         }
 
@@ -783,7 +565,7 @@ namespace MFCModernUI
         }
 
         m_pRenderTarget->BeginDraw();
-        m_pRenderTarget->Clear(ToD2DColor(GetColors().background.normal));
+        m_pRenderTarget->Clear(ToD2DColor(GetColors().surface.normal));
         m_isD2DDrawing = TRUE;
 
         return TRUE;

@@ -253,18 +253,10 @@ namespace MFCModernUI
     {
         // Direct2D 렌더링 시작
         if (!BeginD2DDraw())
-        {
-            OnDrawGdiPlus(pDC);
             return;
-        }
 
         DrawMainControlD2D();
         EndD2DDraw();
-    }
-
-    void CMComboBox::OnDrawGdiPlus(CDC* pDC)
-    {
-        DrawMainControl(pDC);
     }
 
     void CMComboBox::DrawMainControlD2D()
@@ -354,85 +346,6 @@ namespace MFCModernUI
             D2D1::Point2F(arrowX + 4, arrowY - 2),
             m_pSolidBrush, 2.0f
         );
-    }
-
-    void CMComboBox::DrawMainControl(CDC* pDC)
-    {
-        CRect rect;
-        GetClientRect(&rect);
-
-        const ThemeColors& colors = GetColors();
-        int radius = GetThemeManager().GetCornerRadius();
-
-        // 배경
-        COLORREF bgColor = m_enabled ? colors.surface.normal : colors.surface.disabled;
-
-        // 테두리
-        COLORREF borderColor;
-        int borderWidth = 1;
-
-        if (!m_enabled)
-        {
-            borderColor = colors.border.disabled;
-        }
-        else if (m_dropdownVisible || m_state == ControlState::Focused)
-        {
-            borderColor = colors.borderFocus;
-            borderWidth = 2;
-        }
-        else if (m_state == ControlState::Hover)
-        {
-            borderColor = colors.border.hover;
-        }
-        else
-        {
-            borderColor = colors.border.normal;
-        }
-
-        DrawRoundedRect(pDC, rect, radius, bgColor, borderColor, borderWidth);
-
-        // 텍스트 영역
-        CRect textRect = rect;
-        textRect.DeflateRect(12, 0, 32, 0);
-
-        CString displayText;
-        COLORREF textColor;
-
-        if (m_selectedIndex >= 0)
-        {
-            displayText = m_items[m_selectedIndex].text;
-            textColor = m_enabled ? colors.text : colors.textDisabled;
-        }
-        else
-        {
-            displayText = m_placeholder;
-            textColor = colors.textSecondary;
-        }
-
-        DrawText(pDC, displayText, textRect, textColor, TextStyle::Body,
-            DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
-
-        // 화살표
-        DrawDropdownArrow(pDC, rect);
-    }
-
-    void CMComboBox::DrawDropdownArrow(CDC* pDC, const CRect& rect)
-    {
-        const ThemeColors& colors = GetColors();
-        COLORREF arrowColor = m_enabled ? colors.textSecondary : colors.textDisabled;
-
-        int arrowX = rect.right - 20;
-        int arrowY = rect.CenterPoint().y;
-
-        CPen pen(PS_SOLID, 2, arrowColor);
-        CPen* pOldPen = pDC->SelectObject(&pen);
-
-        // 아래 화살표
-        pDC->MoveTo(arrowX - 4, arrowY - 2);
-        pDC->LineTo(arrowX, arrowY + 2);
-        pDC->LineTo(arrowX + 4, arrowY - 2);
-
-        pDC->SelectObject(pOldPen);
     }
 
     void CMComboBox::OnLButtonDown(UINT nFlags, CPoint point)

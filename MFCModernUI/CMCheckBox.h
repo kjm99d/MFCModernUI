@@ -75,7 +75,6 @@ namespace MFCModernUI
         void StartCheckAnimation();
 
         // Direct2D
-        void OnDrawGdiPlus(CDC* pDC);
         void DrawCheckBoxD2D(const CRect& boxRect);
         void DrawCheckMarkD2D(const CRect& boxRect);
         void DrawIndeterminateMarkD2D(const CRect& boxRect);

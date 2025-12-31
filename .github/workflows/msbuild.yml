@@ -30,6 +30,19 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Install MFC
+      shell: powershell
+      run: |
+        $vsInstaller = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe"
+        $vsInstallPath = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise"
+        
+        Start-Process -FilePath $vsInstaller -ArgumentList `
+          "modify", `
+          "--installPath", "`"$vsInstallPath`"", `
+          "--add", "Microsoft.VisualStudio.Component.VC.ATLMFC", `
+          "--quiet", "--norestart" `
+          -Wait -NoNewWindow
+
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.0.2
 
